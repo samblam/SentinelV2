@@ -376,8 +376,8 @@ async def deactivate_blackout(
         )
         blackout_event = result.scalar_one_or_none()
 
-        # Process queued detections
-        queued_items = await queue_mgr.get_pending_items(node.id)
+        # Process queued detections (with row-level locking for concurrency)
+        queued_items = await queue_mgr.get_pending_items(node.id, for_update=True)
         detections_transmitted = 0
 
         for item in queued_items:

@@ -57,6 +57,7 @@ class QueueItem(Base):
     payload = Column(JSONType, nullable=False)  # JSONB for PostgreSQL, JSON for SQLite
     status = Column(String, nullable=False, index=True)  # pending, processing, completed, failed
     retry_count = Column(Integer, default=0, nullable=False)
+    next_attempt_at = Column(DateTime, nullable=True, index=True)  # When to retry this item
     created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc), index=True)
     processed_at = Column(DateTime, nullable=True)
 
