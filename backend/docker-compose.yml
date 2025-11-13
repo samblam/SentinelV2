@@ -20,13 +20,13 @@ services:
   backend:
     build: .
     ports:
-      - "8001:8001"
+      - "8000:8000"
     environment:
       DATABASE_URL: postgresql+asyncpg://sentinel:sentinel@postgres:5432/sentinel
     depends_on:
       postgres:
         condition: service_healthy
-    command: uvicorn src.main:app --host 0.0.0.0 --port 8001
+    command: uvicorn src.main:app --host 0.0.0.0 --port 8000
 
 volumes:
   postgres_data:

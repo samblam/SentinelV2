@@ -1,6 +1,6 @@
 """Tests for database models."""
 import pytest
-from datetime import datetime, timezone
+from datetime import datetime, timezone, timezone
 
 from src.models import Detection, Node, QueueItem, BlackoutEvent
 
@@ -12,7 +12,7 @@ async def test_create_node(get_session):
         node = Node(
             node_id="sentry-01",
             status="online",
-            last_heartbeat=datetime.utcnow()
+            last_heartbeat=datetime.now(timezone.utc)
         )
         session.add(node)
         await session.commit()
@@ -37,7 +37,7 @@ async def test_create_detection(get_session):
         # Create detection
         detection = Detection(
             node_id=node.id,
-            timestamp=datetime.utcnow(),
+            timestamp=datetime.now(timezone.utc),
             latitude=70.5,
             longitude=-100.2,
             detections_json={"detections": []},
@@ -90,7 +90,7 @@ async def test_blackout_event_logging(get_session):
 
         blackout_event = BlackoutEvent(
             node_id=node.id,
-            activated_at=datetime.utcnow(),
+            activated_at=datetime.now(timezone.utc),
             activated_by="operator-001",
             reason="Tactical operation"
         )
@@ -116,7 +116,7 @@ async def test_node_relationships(get_session):
         # Add detection
         detection = Detection(
             node_id=node.id,
-            timestamp=datetime.utcnow(),
+            timestamp=datetime.now(timezone.utc),
             latitude=70.5,
             longitude=-100.2,
             detections_json=[],
@@ -162,7 +162,7 @@ async def test_jsonb_storage(get_session):
 
         detection = Detection(
             node_id=node.id,
-            timestamp=datetime.utcnow(),
+            timestamp=datetime.now(timezone.utc),
             latitude=70.5,
             longitude=-100.2,
             detections_json=complex_data,

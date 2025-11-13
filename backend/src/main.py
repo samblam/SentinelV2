@@ -1,7 +1,8 @@
 """FastAPI application for Sentinel v2 Backend API."""
+import asyncio
 import logging
 from contextlib import asynccontextmanager
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import List, Optional
 
 from fastapi import FastAPI, HTTPException, WebSocket, WebSocketDisconnect, Depends, Query
@@ -74,7 +75,7 @@ app.add_middleware(
 @app.get("/health")
 async def health_check():
     """Health check endpoint."""
-    return {"status": "healthy", "timestamp": datetime.utcnow().isoformat()}
+    return {"status": "healthy", "timestamp": datetime.now(timezone.utc).isoformat()}
 
 
 # Node registration endpoint
@@ -99,7 +100,7 @@ async def register_node(
         node = Node(
             node_id=node_data.node_id,
             status="online",
-            last_heartbeat=datetime.utcnow()
+            last_heartbeat=datetime.now(timezone.utc)
         )
         session.add(node)
         await session.commit()
@@ -111,7 +112,7 @@ async def register_node(
     except Exception as e:
         logger.error(f"Error registering node: {e}")
         await session.rollback()
-        raise HTTPException(status_code=500, detail="Failed to register node")
+        raise HTTPException(status_code=500, detail="Failed to register node") from e
 
 
 # Node heartbeat endpoint
@@ -130,7 +131,7 @@ async def node_heartbeat(
         if not node:
             raise HTTPException(status_code=404, detail="Node not found")
 
-        node.last_heartbeat = datetime.utcnow()
+        node.last_heartbeat = datetime.now(timezone.utc)
         await session.commit()
 
         logger.debug(f"Heartbeat updated for node {node_id}")
@@ -141,7 +142,7 @@ async def node_heartbeat(
     except Exception as e:
         logger.error(f"Error updating heartbeat: {e}")
         await session.rollback()
-        raise HTTPException(status_code=500, detail="Failed to update heartbeat")
+        raise HTTPException(status_code=500, detail="Failed to update heartbeat") from e
 
 
 # Get node status endpoint
@@ -166,7 +167,7 @@ async def get_node_status(
         raise
     except Exception as e:
         logger.error(f"Error getting node status: {e}")
-        raise HTTPException(status_code=500, detail="Failed to get node status")
+        raise HTTPException(status_code=500, detail="Failed to get node status") from e
 
 
 # Detection ingestion endpoint
@@ -237,17 +238,19 @@ async def ingest_detection(
 
         logger.info(f"Ingested detection from node {node.node_id}: {detection.id}")
 
-        # Broadcast to WebSocket clients
-        await manager.broadcast({
-            "type": "new_detection",
-            "node_id": node.node_id,
-            "detection_count": detection.detection_count,
-            "timestamp": detection.timestamp.isoformat(),
-            "location": {
-                "latitude": detection.latitude,
-                "longitude": detection.longitude
-            }
-        })
+        # Broadcast to WebSocket clients in background to avoid blocking
+        asyncio.create_task(
+            manager.broadcast({
+                "type": "new_detection",
+                "node_id": node.node_id,
+                "detection_count": detection.detection_count,
+                "timestamp": detection.timestamp.isoformat(),
+                "location": {
+                    "latitude": detection.latitude,
+                    "longitude": detection.longitude
+                }
+            })
+        )
 
         return detection
 
@@ -256,7 +259,7 @@ async def ingest_detection(
     except Exception as e:
         logger.error(f"Error ingesting detection: {e}")
         await session.rollback()
-        raise HTTPException(status_code=500, detail="Failed to ingest detection")
+        raise HTTPException(status_code=500, detail="Failed to ingest detection") from e
 
 
 # Get detections endpoint with pagination
@@ -279,7 +282,7 @@ async def get_detections(
 
     except Exception as e:
         logger.error(f"Error getting detections: {e}")
-        raise HTTPException(status_code=500, detail="Failed to get detections")
+        raise HTTPException(status_code=500, detail="Failed to get detections") from e
 
 
 # Blackout activation endpoint
@@ -310,7 +313,7 @@ async def activate_blackout(
         # Create blackout event
         blackout_event = BlackoutEvent(
             node_id=node.id,
-            activated_at=datetime.utcnow(),
+            activated_at=datetime.now(timezone.utc),
             reason=blackout_data.reason,
         )
         session.add(blackout_event)
@@ -319,11 +322,13 @@ async def activate_blackout(
         logger.info(f"Activated blackout mode for node {node.node_id}")
 
         # Broadcast to WebSocket clients
-        await manager.broadcast({
+        asyncio.create_task(
+            manager.broadcast({
             "type": "blackout_activated",
             "node_id": node.node_id,
             "timestamp": blackout_event.activated_at.isoformat()
         })
+        )
 
         return {
             "status": "blackout_activated",
@@ -336,7 +341,7 @@ async def activate_blackout(
     except Exception as e:
         logger.error(f"Error activating blackout: {e}")
         await session.rollback()
-        raise HTTPException(status_code=500, detail="Failed to activate blackout")
+        raise HTTPException(status_code=500, detail="Failed to activate blackout") from e
 
 
 # Blackout deactivation endpoint
@@ -402,7 +407,7 @@ async def deactivate_blackout(
 
         # Close blackout event
         if blackout_event:
-            blackout_event.deactivated_at = datetime.utcnow()
+            blackout_event.deactivated_at = datetime.now(timezone.utc)
             blackout_event.detections_queued = detections_transmitted
 
         await session.commit()
@@ -410,18 +415,20 @@ async def deactivate_blackout(
         logger.info(f"Deactivated blackout for node {node.node_id}, transmitted {detections_transmitted} detections")
 
         # Broadcast to WebSocket clients
-        await manager.broadcast({
+        asyncio.create_task(
+            manager.broadcast({
             "type": "blackout_deactivated",
             "node_id": node.node_id,
             "detections_transmitted": detections_transmitted,
-            "timestamp": datetime.utcnow().isoformat()
+            "timestamp": datetime.now(timezone.utc).isoformat()
         })
+        )
 
         return {
             "status": "blackout_deactivated",
             "node_id": node.node_id,
             "detections_transmitted": detections_transmitted,
-            "timestamp": datetime.utcnow().isoformat()
+            "timestamp": datetime.now(timezone.utc).isoformat()
         }
 
     except HTTPException:
@@ -429,7 +436,7 @@ async def deactivate_blackout(
     except Exception as e:
         logger.error(f"Error deactivating blackout: {e}")
         await session.rollback()
-        raise HTTPException(status_code=500, detail="Failed to deactivate blackout")
+        raise HTTPException(status_code=500, detail="Failed to deactivate blackout") from e
 
 
 # WebSocket endpoint
@@ -447,7 +454,7 @@ async def websocket_endpoint(websocket: WebSocket, client_id: Optional[str] = Qu
         await websocket.send_json({
             "type": "connection_established",
             "client_id": client_id,
-            "timestamp": datetime.utcnow().isoformat()
+            "timestamp": datetime.now(timezone.utc).isoformat()
         })
 
         # Keep connection alive and handle incoming messages
@@ -459,7 +466,7 @@ async def websocket_endpoint(websocket: WebSocket, client_id: Optional[str] = Qu
             if data.get("type") == "ping":
                 await websocket.send_json({
                     "type": "pong",
-                    "timestamp": datetime.utcnow().isoformat()
+                    "timestamp": datetime.now(timezone.utc).isoformat()
                 })
 
     except WebSocketDisconnect:

@@ -19,7 +19,7 @@ class Node(Base):
     node_id = Column(String, unique=True, index=True, nullable=False)
     status = Column(String, nullable=False, index=True)  # online, offline, covert
     last_heartbeat = Column(DateTime, nullable=True, index=True)
-    created_at = Column(DateTime, default=datetime.utcnow)
+    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
 
     # Relationships
     detections = relationship("Detection", back_populates="node", cascade="all, delete-orphan")
@@ -42,7 +42,7 @@ class Detection(Base):
     detection_count = Column(Integer, nullable=False)
     inference_time_ms = Column(Float, nullable=True)
     model = Column(String, nullable=True)
-    created_at = Column(DateTime, default=datetime.utcnow, index=True)
+    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc), index=True)
 
     # Relationships
     node = relationship("Node", back_populates="detections")
@@ -56,8 +56,8 @@ class QueueItem(Base):
     node_id = Column(Integer, ForeignKey("nodes.id", ondelete="CASCADE"), nullable=False, index=True)
     payload = Column(JSONType, nullable=False)  # JSONB for PostgreSQL, JSON for SQLite
     status = Column(String, nullable=False, index=True)  # pending, processing, completed, failed
-    retry_count = Column(Integer, default=0)
-    created_at = Column(DateTime, default=datetime.utcnow, index=True)
+    retry_count = Column(Integer, default=0, nullable=False)
+    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc), index=True)
     processed_at = Column(DateTime, nullable=True)
 
     # Relationships

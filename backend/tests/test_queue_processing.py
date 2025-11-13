@@ -1,6 +1,6 @@
 """Tests for queue processing and exponential backoff."""
 import pytest
-from datetime import datetime, timedelta
+from datetime import datetime, timezone, timedelta
 import asyncio
 
 from src.models import Node

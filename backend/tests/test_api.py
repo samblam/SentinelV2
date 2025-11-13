@@ -1,7 +1,7 @@
 """Tests for FastAPI endpoints."""
 import pytest
 from httpx import AsyncClient, ASGITransport
-from datetime import datetime, timedelta
+from datetime import datetime, timezone, timedelta
 from sqlalchemy import select
 from starlette.testclient import TestClient
 
@@ -70,7 +70,7 @@ async def test_submit_detection(test_engine, get_session):
             "/api/detections",
             json={
                 "node_id": "test-node",
-                "timestamp": datetime.utcnow().isoformat(),
+                "timestamp": datetime.now(timezone.utc).isoformat(),
                 "location": {"latitude": 37.7749, "longitude": -122.4194, "altitude_m": 10.5},
                 "detections": [
                     {"class": "person", "confidence": 0.95},
@@ -96,7 +96,7 @@ async def test_submit_detection_nonexistent_node(test_engine, get_session):
             "/api/detections",
             json={
                 "node_id": "nonexistent-node",
-                "timestamp": datetime.utcnow().isoformat(),
+                "timestamp": datetime.now(timezone.utc).isoformat(),
                 "location": {"latitude": 37.7749, "longitude": -122.4194},
                 "detections": [{"class": "person", "confidence": 0.95}],
                 "detection_count": 1
@@ -119,7 +119,7 @@ async def test_get_detections(test_engine, get_session):
         for i in range(15):
             detection = Detection(
                 node_id=node.id,
-                timestamp=datetime.utcnow() - timedelta(minutes=i),
+                timestamp=datetime.now(timezone.utc) - timedelta(minutes=i),
                 latitude=37.7749,
                 longitude=-122.4194,
                 detections_json=[{"class": "test", "confidence": 0.9}],
@@ -147,7 +147,7 @@ async def test_get_detections(test_engine, get_session):
 async def test_get_node_status(test_engine, get_session):
     """Test getting node status."""
     async with get_session() as session:
-        node = Node(node_id="test-node", status="online", last_heartbeat=datetime.utcnow())
+        node = Node(node_id="test-node", status="online", last_heartbeat=datetime.now(timezone.utc))
         session.add(node)
         await session.commit()
         await session.refresh(node)
@@ -231,7 +231,7 @@ async def test_deactivate_blackout(test_engine, get_session):
 
         blackout = BlackoutEvent(
             node_id=node.id,
-            activated_at=datetime.utcnow(),
+            activated_at=datetime.now(timezone.utc),
             reason="Test"
         )
         session.add(blackout)
@@ -272,7 +272,7 @@ async def test_blackout_queues_detections(test_engine, get_session):
         await session.commit()
         await session.refresh(node)
 
-        blackout = BlackoutEvent(node_id=node.id, activated_at=datetime.utcnow())
+        blackout = BlackoutEvent(node_id=node.id, activated_at=datetime.now(timezone.utc))
         session.add(blackout)
         await session.commit()
 
@@ -282,7 +282,7 @@ async def test_blackout_queues_detections(test_engine, get_session):
             "/api/detections",
             json={
                 "node_id": "test-node",
-                "timestamp": datetime.utcnow().isoformat(),
+                "timestamp": datetime.now(timezone.utc).isoformat(),
                 "location": {"latitude": 37.7749, "longitude": -122.4194},
                 "detections": [{"class": "person", "confidence": 0.95}],
                 "detection_count": 1

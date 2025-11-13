@@ -5,7 +5,7 @@ from httpx import AsyncClient, ASGITransport
 from src.main import app
 from src.models import Node, Detection, BlackoutEvent
 from src.queue import QueueManager
-from datetime import datetime, timedelta
+from datetime import datetime, timezone, timedelta
 
 
 @pytest.mark.asyncio
@@ -20,7 +20,7 @@ async def test_get_detections_with_node_filter(test_engine, get_session):
         # Add detection
         detection = Detection(
             node_id=node.id,
-            timestamp=datetime.utcnow(),
+            timestamp=datetime.now(timezone.utc),
             latitude=37.7749,
             longitude=-122.4194,
             detections_json=[{"class": "person", "confidence": 0.95}],
@@ -83,7 +83,7 @@ async def test_detection_broadcast_coverage(test_engine, get_session):
             "/api/detections",
             json={
                 "node_id": "broadcast-test-node",
-                "timestamp": datetime.utcnow().isoformat(),
+                "timestamp": datetime.now(timezone.utc).isoformat(),
                 "location": {"latitude": 40.7128, "longitude": -74.0060},
                 "detections": [
                     {"class": "vehicle", "confidence": 0.92},
@@ -150,7 +150,7 @@ async def test_deactivate_blackout_transmits_queued(test_engine, get_session):
 
         blackout = BlackoutEvent(
             node_id=node.id,
-            activated_at=datetime.utcnow(),
+            activated_at=datetime.now(timezone.utc),
             reason="Test transmission"
         )
         session.add(blackout)
@@ -165,7 +165,7 @@ async def test_deactivate_blackout_transmits_queued(test_engine, get_session):
                 "/api/detections",
                 json={
                     "node_id": "transmit-test-node",
-                    "timestamp": datetime.utcnow().isoformat(),
+                    "timestamp": datetime.now(timezone.utc).isoformat(),
                     "location": {"latitude": 37.0 + i, "longitude": -122.0},
                     "detections": [{"class": "test", "confidence": 0.9}],
                     "detection_count": 1
@@ -190,7 +190,7 @@ async def test_node_heartbeat_updates_timestamp(test_engine, get_session):
         node = Node(
             node_id="heartbeat-node",
             status="online",
-            last_heartbeat=datetime.utcnow() - timedelta(hours=1)
+            last_heartbeat=datetime.now(timezone.utc) - timedelta(hours=1)
         )
         session.add(node)
         await session.commit()
@@ -225,7 +225,7 @@ async def test_detection_missing_optional_fields(test_engine, get_session):
             "/api/detections",
             json={
                 "node_id": "minimal-detection-node",
-                "timestamp": datetime.utcnow().isoformat(),
+                "timestamp": datetime.now(timezone.utc).isoformat(),
                 "location": {"latitude": 37.7749, "longitude": -122.4194},
                 "detections": [{"class": "person", "confidence": 0.95}],
                 "detection_count": 1

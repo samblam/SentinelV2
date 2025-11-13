@@ -1,6 +1,6 @@
 """Tests for queue management."""
 import pytest
-from datetime import datetime, timedelta
+from datetime import datetime, timezone, timedelta
 
 from src.queue import QueueManager
 from src.models import Node

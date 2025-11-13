@@ -1,7 +1,7 @@
 """Tests for edge cases and error handling."""
 import pytest
 from httpx import AsyncClient, ASGITransport
-from datetime import datetime
+from datetime import datetime, timezone
 
 from src.main import app
 from src.models import Node
@@ -170,7 +170,7 @@ async def test_detection_with_all_optional_fields(test_engine, get_session):
             "/api/detections",
             json={
                 "node_id": "test-node",
-                "timestamp": datetime.utcnow().isoformat(),
+                "timestamp": datetime.now(timezone.utc).isoformat(),
                 "location": {
                     "latitude": 37.7749,
                     "longitude": -122.4194,
