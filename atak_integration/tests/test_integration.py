@@ -58,7 +58,7 @@ async def test_batch_processing_pipeline():
     from src.cot_validator import CoTValidator
     from src.mock_tak_server import MockTAKServer
     from src.tak_client import TAKClient
-    from tests.conftest import create_sample_detection
+    from tests.helpers import create_sample_detection
 
     # Create multiple detections
     detections = [
@@ -168,7 +168,7 @@ async def test_concurrent_clients_integration():
     from src.cot_generator import CoTGenerator
     from src.mock_tak_server import MockTAKServer
     from src.tak_client import TAKClient
-    from tests.conftest import create_sample_detection
+    from tests.helpers import create_sample_detection
 
     server = MockTAKServer(host='127.0.0.1', port=28092)
     await server.start()
@@ -215,7 +215,7 @@ async def test_real_time_detection_stream():
     from src.cot_generator import CoTGenerator
     from src.mock_tak_server import MockTAKServer
     from src.tak_client import TAKClient
-    from tests.conftest import create_sample_detection
+    from tests.helpers import create_sample_detection
 
     server = MockTAKServer(host='127.0.0.1', port=28093)
     await server.start()
@@ -258,7 +258,7 @@ async def test_pipeline_with_context_managers():
     from src.cot_validator import CoTValidator
     from src.mock_tak_server import MockTAKServer
     from src.tak_client import TAKClient
-    from tests.conftest import create_sample_detection
+    from tests.helpers import create_sample_detection
 
     async with MockTAKServer(host='127.0.0.1', port=28094) as server:
         # Generate detection
@@ -289,7 +289,7 @@ async def test_edge_case_arctic_coordinates():
     from src.cot_schemas import SentinelDetection
     from src.cot_generator import CoTGenerator
     from src.cot_validator import CoTValidator
-    from tests.conftest import create_sample_detection
+    from tests.helpers import create_sample_detection
 
     # Extreme Arctic location (near North Pole)
     detection_data = create_sample_detection(

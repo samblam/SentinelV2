@@ -199,7 +199,7 @@ def test_validator_batch_validation():
     from src.cot_validator import CoTValidator
     from src.cot_generator import CoTGenerator
     from src.cot_schemas import SentinelDetection
-    from tests.conftest import create_sample_detection
+    from tests.helpers import create_sample_detection
 
     detections = [
         SentinelDetection(**create_sample_detection(node_id=f"sentry-{i}"))

@@ -94,5 +94,4 @@ def create_sample_detection(**overrides):
         "inference_time_ms": 87.5,
         "model": "yolov5n"
     }
-    base.update(overrides)
-    return base
+    return base | overrides
