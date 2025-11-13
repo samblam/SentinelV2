@@ -250,7 +250,7 @@ async def test_detect_performance(client, test_image_path):
 @pytest.mark.asyncio
 async def test_multiple_detections(client, test_image_path):
     """Test API can handle multiple detections"""
-    for i in range(3):
+    for _ in range(3):
         with open(test_image_path, 'rb') as f:
             files = {"file": ("test.jpg", f, "image/jpeg")}
             response = await client.post("/detect", files=files)

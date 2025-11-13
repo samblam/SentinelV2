@@ -41,13 +41,19 @@ def test_inference_performance():
 
 
 def test_detection_format():
-    """Test individual detection format"""
+    """Test detection format structure (validates format when detections exist)"""
     engine = InferenceEngine()
     test_image = Path(__file__).parent / "fixtures" / "test_image.jpg"
     result = engine.detect(str(test_image))
 
-    if result["count"] > 0:
-        detection = result["detections"][0]
+    # Verify result always has count field
+    assert "count" in result
+    assert result["count"] >= 0
+    assert len(result["detections"]) == result["count"]
+
+    # If there are detections, validate their format
+    # (Note: test image might not trigger detections from YOLOv5)
+    for detection in result["detections"]:
         assert "bbox" in detection
         assert "class" in detection
         assert "confidence" in detection
@@ -61,19 +67,13 @@ def test_detection_format():
         assert "ymax" in bbox
 
 
-def test_multiple_inferences():
-    """Test model can handle multiple inferences"""
+@pytest.mark.parametrize("run_number", [1, 2, 3])
+def test_multiple_inferences(run_number):
+    """Test model can handle multiple inferences (parametrized to avoid loops)"""
     engine = InferenceEngine()
     test_image = Path(__file__).parent / "fixtures" / "test_image.jpg"
 
-    # Run 3 inferences
-    results = []
-    for _ in range(3):
-        result = engine.detect(str(test_image))
-        results.append(result)
-
-    # All should complete successfully
-    assert len(results) == 3
-    for result in results:
-        assert "detections" in result
-        assert result["inference_time_ms"] < 100
+    # Each run should complete successfully
+    result = engine.detect(str(test_image))
+    assert "detections" in result
+    assert result["inference_time_ms"] < 100

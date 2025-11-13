@@ -17,9 +17,7 @@ async def blackout_controller():
     temp_db = tempfile.NamedTemporaryFile(delete=False, suffix=".db")
     temp_db.close()
 
-    controller = BlackoutController(db_path=temp_db.name)
-
-    yield controller
+    yield BlackoutController(db_path=temp_db.name)
 
     # Cleanup
     if os.path.exists(temp_db.name):
@@ -168,3 +166,62 @@ async def test_blackout_reactivation(blackout_controller):
     queued = await controller.get_queued_detections()
     assert len(queued) == 1
     assert queued[0]["cycle"] == 2
+
+
+@pytest.mark.asyncio
+async def test_blackout_large_queue(blackout_controller):
+    """Test blackout handles large number of queued detections (stress test)"""
+    controller = blackout_controller
+
+    await controller.activate()
+
+    # Queue 100 detections to test performance
+    queue_size = 100
+    for i in range(queue_size):
+        await controller.queue_detection({
+            "id": i,
+            "timestamp": f"2025-01-01T00:00:{i:02d}",
+            "detections": [{"test": f"detection_{i}"}]
+        })
+
+    # Verify all were queued
+    queued = await controller.get_queued_detections()
+    assert len(queued) == queue_size
+
+    # Verify order is preserved
+    assert queued[0]["id"] == 0
+    assert queued[queue_size - 1]["id"] == queue_size - 1
+
+    # Test deactivation with large queue
+    deactivated_detections = await controller.deactivate()
+    assert len(deactivated_detections) == queue_size
+    assert controller.is_active == False
+
+    # Verify queue is cleared after deactivation
+    queued_after = await controller.get_queued_detections()
+    assert len(queued_after) == 0
+
+
+@pytest.mark.asyncio
+async def test_blackout_very_large_queue(blackout_controller):
+    """Test blackout handles very large queue (1000 items) for production readiness"""
+    controller = blackout_controller
+
+    await controller.activate()
+
+    # Queue 1000 detections
+    queue_size = 1000
+    for i in range(queue_size):
+        await controller.queue_detection({"id": i, "data": f"item_{i}"})
+
+    # Verify count
+    queued = await controller.get_queued_detections()
+    assert len(queued) == queue_size
+
+    # Spot check first and last items
+    assert queued[0]["id"] == 0
+    assert queued[-1]["id"] == queue_size - 1
+
+    # Deactivate and verify
+    deactivated = await controller.deactivate()
+    assert len(deactivated) == queue_size
