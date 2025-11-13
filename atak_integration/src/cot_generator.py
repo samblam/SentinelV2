@@ -98,7 +98,8 @@ class CoTGenerator:
 
         # Add detection details for each detected object
         for det_dict in detection.detections:
-            self._add_detection_element(detail, det_dict, detection.inference_time_ms)
+            if self._validate_detection_dict(det_dict):
+                self._add_detection_element(detail, det_dict, detection.inference_time_ms)
 
         # Convert to XML string
         xml_bytes = etree.tostring(
@@ -188,6 +189,50 @@ class CoTGenerator:
         summary_parts = [f"{count} {cls}" for cls, count in class_counts.items()]
         return f"Multiple detections: {', '.join(summary_parts)}"
 
+    def _validate_detection_dict(self, det_dict: dict) -> bool:
+        """Validate detection dict structure before XML generation.
+
+        Args:
+            det_dict: Detection dictionary to validate
+
+        Returns:
+            True if valid, False otherwise
+        """
+        # Check if it's a dictionary
+        if not isinstance(det_dict, dict):
+            return False
+
+        # Required keys for valid detection
+        required_keys = {"class", "confidence"}
+
+        # Check for required keys
+        if not required_keys.issubset(det_dict.keys()):
+            return False
+
+        # Validate confidence is numeric
+        confidence = det_dict.get("confidence")
+        if not isinstance(confidence, (int, float)):
+            return False
+
+        # Validate confidence range (0.0 to 1.0)
+        if not 0.0 <= confidence <= 1.0:
+            return False
+
+        # Validate bbox if present
+        if "bbox" in det_dict:
+            bbox = det_dict["bbox"]
+            if isinstance(bbox, dict):
+                # Check bbox has required keys
+                required_bbox_keys = {"xmin", "ymin", "xmax", "ymax"}
+                if not required_bbox_keys.issubset(bbox.keys()):
+                    return False
+                # Validate all values are numeric
+                for key in required_bbox_keys:
+                    if not isinstance(bbox[key], (int, float)):
+                        return False
+
+        return True
+
     def _add_detection_element(
         self,
         parent: etree.Element,
@@ -216,8 +261,7 @@ class CoTGenerator:
         inference.text = str(inference_time_ms)
 
         # Bounding box
-        bbox = detection_dict.get("bbox", {})
-        if bbox:
+        if bbox := detection_dict.get("bbox", {}):
             bbox_elem = etree.SubElement(detection_elem, "bbox")
             bbox_elem.set("xmin", str(bbox.get("xmin", 0)))
             bbox_elem.set("ymin", str(bbox.get("ymin", 0)))

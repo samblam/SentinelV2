@@ -46,10 +46,10 @@ class TAKClient:
                 timeout=timeout
             )
             logger.info(f"Connected to TAK server at {self.host}:{self.port}")
-        except asyncio.TimeoutError:
-            raise ConnectionError(f"Connection to {self.host}:{self.port} timed out")
+        except asyncio.TimeoutError as e:
+            raise ConnectionError(f"Connection to {self.host}:{self.port} timed out") from e
         except Exception as e:
-            raise ConnectionError(f"Failed to connect to {self.host}:{self.port}: {e}")
+            raise ConnectionError(f"Failed to connect to {self.host}:{self.port}: {e}") from e
 
     async def disconnect(self):
         """Disconnect from TAK server.
@@ -92,8 +92,8 @@ class TAKClient:
             raise ConnectionError("Not connected to TAK server")
 
         try:
-            # Encode and send
-            data = cot_xml.encode('utf-8')
+            # Encode and send with null terminator for message framing
+            data = cot_xml.encode('utf-8') + b'\x00'
             self.writer.write(data)
             await self.writer.drain()
 
@@ -102,7 +102,7 @@ class TAKClient:
 
         except Exception as e:
             logger.error(f"Error sending CoT message: {e}")
-            raise RuntimeError(f"Failed to send CoT message: {e}")
+            raise RuntimeError(f"Failed to send CoT message: {e}") from e
 
     async def send_batch(self, cot_messages: List[str]) -> List[bool]:
         """Send multiple CoT messages to TAK server.
