@@ -198,3 +198,82 @@ async def test_websocket_without_client_id(test_engine):
         with pytest.raises(Exception):
             with client.websocket_connect("/ws"):
                 pass
+
+
+@pytest.mark.asyncio
+async def test_pagination_with_zero_limit(test_engine, get_session):
+    """Test detection pagination with zero limit."""
+    transport = ASGITransport(app=app)
+    async with AsyncClient(transport=transport, base_url="http://test") as client:
+        # Test with limit=0 (should fail validation)
+        response = await client.get("/api/detections?limit=0&offset=0")
+        assert response.status_code == 422  # Validation error
+
+
+@pytest.mark.asyncio
+async def test_pagination_with_negative_limit(test_engine, get_session):
+    """Test detection pagination with negative limit."""
+    transport = ASGITransport(app=app)
+    async with AsyncClient(transport=transport, base_url="http://test") as client:
+        # Test with negative limit (should fail validation)
+        response = await client.get("/api/detections?limit=-10&offset=0")
+        assert response.status_code == 422  # Validation error
+
+
+@pytest.mark.asyncio
+async def test_failed_queue_items_not_reprocessed(get_session):
+    """Test that permanently failed queue items are not reprocessed."""
+    queue = QueueManager(session_factory=get_session)
+    queue.max_retries = 2  # Set low max for testing
+
+    async with get_session() as session:
+        node = Node(node_id="test-node", status="online")
+        session.add(node)
+        await session.commit()
+        await session.refresh(node)
+        node_id = node.id
+
+    # Enqueue an item
+    item_id = await queue.enqueue(node_id, {"test": "permanent_failure"})
+
+    # Fail it until it's permanently failed
+    await queue.mark_failed(item_id)  # retry_count = 1, status = pending
+    await queue.mark_failed(item_id)  # retry_count = 2, status = failed
+
+    # Verify status is failed
+    item = await queue.get_item(item_id)
+    assert item.status == "failed"
+    assert item.retry_count >= queue.max_retries
+
+    # Get pending items should not include this failed item
+    pending_items = await queue.get_pending_items(node_id)
+    assert len(pending_items) == 0
+
+
+@pytest.mark.asyncio
+async def test_queue_processing_with_exception(get_session):
+    """Test queue processing handles exceptions properly."""
+    from unittest.mock import patch
+
+    queue = QueueManager(session_factory=get_session)
+    queue.base_retry_delay = 0  # No delay for testing
+
+    async with get_session() as session:
+        node = Node(node_id="error-test-node", status="online")
+        session.add(node)
+        await session.commit()
+        await session.refresh(node)
+        node_id = node.id
+
+    # Enqueue an item
+    item_id = await queue.enqueue(node_id, {"test": "error_handling"})
+
+    # Mock mark_completed to raise an exception
+    with patch.object(queue, 'mark_completed', side_effect=Exception("Simulated error")):
+        # Process queue should handle the exception by calling mark_failed
+        await queue.process_queue(node_id)
+
+    # Item should have been marked as failed
+    item = await queue.get_item(item_id)
+    assert item.retry_count == 1
+    assert item.status == "pending"  # Still pending because retry_count < max_retries
