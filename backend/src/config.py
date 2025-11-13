@@ -19,6 +19,7 @@ class Settings(BaseSettings):
 
     # CoT/TAK settings
     COT_ENABLED: bool = True  # Enable CoT generation
+    COT_TYPE: str = "a-f-G-E-S"  # CoT event type (friendly ground sensor equipment)
     COT_STALE_MINUTES: int = 5  # CoT stale time
     TAK_SERVER_ENABLED: bool = False  # Enable TAK server transmission
     TAK_SERVER_HOST: str = "localhost"

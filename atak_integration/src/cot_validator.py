@@ -70,7 +70,7 @@ class CoTValidator:
         if not point_errors:  # Only if event attrs are valid
             errors.extend(self._validate_timestamps(root))
 
-        return len(errors) == 0, errors
+        return not errors, errors
 
     def validate_batch(self, cot_messages: List[str]) -> List[Tuple[bool, List[str]]]:
         """Validate multiple CoT messages.
@@ -99,15 +99,14 @@ class CoTValidator:
         Returns:
             List of error messages
         """
-        errors = []
-
-        for attr in self.required_event_attrs:
-            if attr not in root.attrib:
-                errors.append(f"Missing required attribute: {attr}")
+        errors = [
+            f"Missing required attribute: {attr}"
+            for attr in self.required_event_attrs
+            if attr not in root.attrib
+        ]
 
         # Validate CoT version
-        version = root.get('version')
-        if version and version != '2.0':
+        if (version := root.get('version')) and version != '2.0':
             errors.append(f"Unsupported CoT version: {version} (expected 2.0)")
 
         return errors
@@ -130,9 +129,11 @@ class CoTValidator:
             return errors
 
         # Check required attributes
-        for attr in self.required_point_attrs:
-            if attr not in point.attrib:
-                errors.append(f"Missing required point attribute: {attr}")
+        errors.extend([
+            f"Missing required point attribute: {attr}"
+            for attr in self.required_point_attrs
+            if attr not in point.attrib
+        ])
 
         # Validate coordinate ranges
         try:
@@ -151,8 +152,7 @@ class CoTValidator:
 
         # Validate other numeric attributes
         for attr in ['hae', 'ce', 'le']:
-            value = point.get(attr)
-            if value:
+            if value := point.get(attr):
                 try:
                     float(value)
                 except ValueError:
@@ -172,14 +172,13 @@ class CoTValidator:
         errors = []
 
         for attr in ['time', 'start', 'stale']:
-            timestamp = root.get(attr)
-            if timestamp:
+            if timestamp := root.get(attr):
                 try:
                     # Try to parse as ISO 8601
                     # Replace 'Z' with '+00:00' for parsing
                     timestamp_str = timestamp.replace('Z', '+00:00')
                     datetime.fromisoformat(timestamp_str)
-                except (ValueError, TypeError) as e:
+                except (ValueError, TypeError):
                     errors.append(f"Invalid timestamp format for {attr}: {timestamp}")
 
         return errors

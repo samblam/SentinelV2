@@ -412,9 +412,8 @@ async def test_cot_with_queued_detection(test_engine, get_session):
 
         # Get the detection ID
         detections_response = await client.get("/api/detections?limit=1")
-        detections = detections_response.json()
 
-        if detections:
+        if detections := detections_response.json():
             detection_id = detections[0]["id"]
 
             # Generate CoT for the dequeued detection
