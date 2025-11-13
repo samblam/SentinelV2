@@ -7,6 +7,9 @@ from typing import AsyncGenerator
 
 from src.models import Base
 from src.config import settings
+from src.main import app, get_queue_manager
+from src.database import get_session as get_session_dependency
+from src.queue import QueueManager
 
 
 # Test database URL - using SQLite for testing without PostgreSQL dependency
@@ -79,3 +82,19 @@ def get_session(test_engine):
                 await session.close()
 
     return _get_session
+
+
+@pytest.fixture(autouse=True)
+def override_dependencies(get_session):
+    """Override FastAPI dependencies with test versions."""
+    async def _override_session():
+        async with get_session() as session:
+            yield session
+
+    def _override_queue_manager():
+        return QueueManager(session_factory=get_session)
+
+    app.dependency_overrides[get_session_dependency] = _override_session
+    app.dependency_overrides[get_queue_manager] = _override_queue_manager
+    yield
+    app.dependency_overrides.clear()
