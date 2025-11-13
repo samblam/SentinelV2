@@ -8,7 +8,7 @@ import tempfile
 import os
 from typing import Optional
 
-from .inference import InferenceEngine
+from .inference import InferenceEngine, ImageLoadError, ModelInferenceError
 from .telemetry import TelemetryGenerator
 from .blackout import BlackoutController
 from .config import Settings
@@ -85,17 +85,37 @@ async def detect(
     if not file.content_type.startswith("image/"):
         raise HTTPException(status_code=400, detail="File must be an image")
 
-    # Save to temporary file
+    # Read file contents
     contents = await file.read()
 
-    with tempfile.NamedTemporaryFile(delete=False, suffix=".jpg") as tmp:
+    # Validate file size to prevent DoS
+    file_size = len(contents)
+    if file_size > settings.MAX_IMAGE_SIZE:
+        raise HTTPException(
+            status_code=413,
+            detail=f"File too large. Maximum size: {settings.MAX_IMAGE_SIZE} bytes"
+        )
+
+    # Preserve original file extension
+    file_ext = os.path.splitext(file.filename)[1] if file.filename else ".jpg"
+    if not file_ext:
+        file_ext = ".jpg"  # Fallback to .jpg if no extension
+
+    # Save to temporary file
+    with tempfile.NamedTemporaryFile(delete=False, suffix=file_ext) as tmp:
         tmp.write(contents)
         tmp_path = tmp.name
 
     try:
         # Run inference
         engine = get_inference_engine()
-        detection_result = engine.detect(tmp_path)
+
+        try:
+            detection_result = engine.detect(tmp_path)
+        except ImageLoadError as e:
+            raise HTTPException(status_code=400, detail=f"Image error: {str(e)}")
+        except ModelInferenceError as e:
+            raise HTTPException(status_code=500, detail=f"Inference error: {str(e)}")
 
         # Create message with telemetry
         message = telemetry.create_detection_message(
@@ -115,9 +135,15 @@ async def detect(
         return JSONResponse(content=message)
 
     finally:
-        # Clean up temp file
-        if os.path.exists(tmp_path):
+        # Clean up temp file - handle race condition
+        try:
             os.unlink(tmp_path)
+        except FileNotFoundError:
+            # File already deleted, no problem
+            pass
+        except Exception:
+            # Log error in production, but don't fail the request
+            pass
 
 
 @app.post("/blackout/activate")

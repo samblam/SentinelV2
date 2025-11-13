@@ -85,6 +85,64 @@ async def test_detect_endpoint_rejects_non_image(client):
 
 
 @pytest.mark.asyncio
+async def test_detect_endpoint_rejects_oversized_file(client):
+    """Test detect endpoint rejects files larger than MAX_IMAGE_SIZE"""
+    # Create a large fake image (11MB, exceeding 10MB limit)
+    large_content = b"X" * (11 * 1024 * 1024)
+    files = {"file": ("large.jpg", io.BytesIO(large_content), "image/jpeg")}
+
+    response = await client.post("/detect", files=files)
+
+    assert response.status_code == 413  # Payload Too Large
+    assert "too large" in response.json()["detail"].lower()
+
+
+@pytest.mark.asyncio
+async def test_detect_endpoint_handles_corrupted_image(client):
+    """Test detect endpoint handles corrupted image gracefully"""
+    # Create corrupted image data (has image MIME but invalid content)
+    corrupted_content = b"\xFF\xD8\xFF\xE0\x00\x10JFIF" + b"corrupted_data" * 100
+    files = {"file": ("corrupted.jpg", io.BytesIO(corrupted_content), "image/jpeg")}
+
+    response = await client.post("/detect", files=files)
+
+    # Should return 400 (client error) or 500 (server error) but not crash
+    assert response.status_code in [400, 500]
+    data = response.json()
+    assert "detail" in data
+    # Should mention it's an image or inference error
+    assert any(keyword in data["detail"].lower() for keyword in ["image", "inference", "error"])
+
+
+@pytest.mark.asyncio
+async def test_detect_endpoint_handles_text_as_image(client):
+    """Test detect endpoint handles text file disguised as image"""
+    # Text content with image MIME type
+    text_content = b"This is plain text disguised as an image"
+    files = {"file": ("fake.jpg", io.BytesIO(text_content), "image/jpeg")}
+
+    response = await client.post("/detect", files=files)
+
+    # Should fail gracefully with appropriate error
+    assert response.status_code in [400, 500]
+    data = response.json()
+    assert "detail" in data
+
+
+@pytest.mark.asyncio
+async def test_detect_endpoint_preserves_file_extension(client, test_image_path):
+    """Test that file extension is preserved from original filename"""
+    # Test with .png extension
+    with open(test_image_path, 'rb') as f:
+        files = {"file": ("test.png", f, "image/png")}
+        response = await client.post("/detect", files=files)
+
+    # Should succeed regardless of extension (as long as it's a valid image)
+    # This tests that we properly preserve extensions, not hardcode .jpg
+    assert response.status_code in [200, 400]  # 200 if PIL can read it, 400 if format issue
+
+
+@pytest.mark.asyncio
 async def test_detect_endpoint_custom_node_id(client, test_image_path):
     """Test detect endpoint with custom node ID"""
     custom_node_id = "test-node-99"

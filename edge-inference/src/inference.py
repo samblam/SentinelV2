@@ -6,6 +6,22 @@ import torch
 import time
 from pathlib import Path
 from typing import Dict, List, Any
+import os
+
+
+class InferenceError(Exception):
+    """Base exception for inference errors"""
+    pass
+
+
+class ImageLoadError(InferenceError):
+    """Raised when image cannot be loaded or is corrupted"""
+    pass
+
+
+class ModelInferenceError(InferenceError):
+    """Raised when model inference fails"""
+    pass
 
 
 class InferenceEngine:
@@ -53,32 +69,61 @@ class InferenceEngine:
 
         Returns:
             Dictionary with detections and metadata
+
+        Raises:
+            ImageLoadError: If image cannot be loaded or is corrupted
+            ModelInferenceError: If inference fails
         """
+        # Validate image file exists
+        if not os.path.exists(image_path):
+            raise ImageLoadError(f"Image file not found: {image_path}")
+
         start_time = time.time()
 
-        # Run inference
-        results = self.model(image_path)
+        try:
+            # Run inference
+            results = self.model(image_path)
 
-        # Extract detections
-        detections = results.pandas().xyxy[0].to_dict('records')
+            # Check if results are valid
+            if results is None or not hasattr(results, 'pandas'):
+                raise ModelInferenceError("Model returned invalid results")
+
+            # Extract detections
+            detections = results.pandas().xyxy[0].to_dict('records')
+
+        except ImageLoadError:
+            # Re-raise our custom exceptions
+            raise
+        except ModelInferenceError:
+            # Re-raise our custom exceptions
+            raise
+        except Exception as e:
+            # Catch PIL/OpenCV image loading errors, corrupted files, etc.
+            if "cannot identify image file" in str(e).lower() or "truncated" in str(e).lower():
+                raise ImageLoadError(f"Failed to load image (possibly corrupted): {str(e)}")
+            # Catch any other inference errors
+            raise ModelInferenceError(f"Inference failed: {str(e)}")
 
         inference_time = (time.time() - start_time) * 1000  # Convert to ms
 
         # Format output
-        formatted_detections = [
-            {
-                "bbox": {
-                    "xmin": float(det["xmin"]),
-                    "ymin": float(det["ymin"]),
-                    "xmax": float(det["xmax"]),
-                    "ymax": float(det["ymax"])
-                },
-                "class": det["name"],
-                "confidence": float(det["confidence"]),
-                "class_id": int(det["class"])
-            }
-            for det in detections
-        ]
+        try:
+            formatted_detections = [
+                {
+                    "bbox": {
+                        "xmin": float(det["xmin"]),
+                        "ymin": float(det["ymin"]),
+                        "xmax": float(det["xmax"]),
+                        "ymax": float(det["ymax"])
+                    },
+                    "class": det["name"],
+                    "confidence": float(det["confidence"]),
+                    "class_id": int(det["class"])
+                }
+                for det in detections
+            ]
+        except (KeyError, ValueError) as e:
+            raise ModelInferenceError(f"Failed to parse detection results: {str(e)}")
 
         return {
             "detections": formatted_detections,
