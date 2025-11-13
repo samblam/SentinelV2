@@ -10,7 +10,7 @@ from sqlalchemy import select, desc
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.config import settings
-from src.database import get_session, init_db
+from src.database import get_db, init_db
 from src.models import Node, Detection, BlackoutEvent, QueueItem
 from src.schemas import (
     NodeRegister,
@@ -81,7 +81,7 @@ async def health_check():
 @app.post("/api/nodes/register", response_model=NodeResponse)
 async def register_node(
     node_data: NodeRegister,
-    session: AsyncSession = Depends(get_session)
+    session: AsyncSession = Depends(get_db)
 ):
     """Register a new edge node or return existing one."""
     try:
@@ -118,7 +118,7 @@ async def register_node(
 @app.post("/api/nodes/{node_id}/heartbeat")
 async def node_heartbeat(
     node_id: int,
-    session: AsyncSession = Depends(get_session)
+    session: AsyncSession = Depends(get_db)
 ):
     """Update node heartbeat timestamp."""
     try:
@@ -148,7 +148,7 @@ async def node_heartbeat(
 @app.get("/api/nodes/{node_id}/status", response_model=NodeResponse)
 async def get_node_status(
     node_id: int,
-    session: AsyncSession = Depends(get_session)
+    session: AsyncSession = Depends(get_db)
 ):
     """Get node status."""
     try:
@@ -173,7 +173,7 @@ async def get_node_status(
 @app.post("/api/detections", response_model=DetectionResponse)
 async def ingest_detection(
     detection_data: DetectionCreate,
-    session: AsyncSession = Depends(get_session),
+    session: AsyncSession = Depends(get_db),
     queue_mgr: QueueManager = Depends(get_queue_manager)
 ):
     """Ingest detection data from edge node."""
@@ -264,7 +264,7 @@ async def ingest_detection(
 async def get_detections(
     limit: int = Query(100, ge=1, le=1000),
     offset: int = Query(0, ge=0),
-    session: AsyncSession = Depends(get_session)
+    session: AsyncSession = Depends(get_db)
 ):
     """Get detections with pagination."""
     try:
@@ -286,7 +286,7 @@ async def get_detections(
 @app.post("/api/blackout/activate")
 async def activate_blackout(
     blackout_data: BlackoutActivate,
-    session: AsyncSession = Depends(get_session)
+    session: AsyncSession = Depends(get_db)
 ):
     """Activate blackout mode for a node."""
     try:
@@ -343,7 +343,7 @@ async def activate_blackout(
 @app.post("/api/blackout/deactivate")
 async def deactivate_blackout(
     blackout_data: BlackoutDeactivate,
-    session: AsyncSession = Depends(get_session),
+    session: AsyncSession = Depends(get_db),
     queue_mgr: QueueManager = Depends(get_queue_manager)
 ):
     """Deactivate blackout mode and transmit queued detections."""
