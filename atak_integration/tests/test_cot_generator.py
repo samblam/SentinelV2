@@ -52,7 +52,7 @@ def test_cot_uid_uniqueness():
     """Test each CoT message has unique UID."""
     from src.cot_generator import CoTGenerator
     from src.cot_schemas import SentinelDetection
-    from tests.conftest import create_sample_detection
+    from tests.helpers import create_sample_detection
 
     detection1 = SentinelDetection(**create_sample_detection())
     detection2 = SentinelDetection(**create_sample_detection())
@@ -261,7 +261,7 @@ def test_cot_generator_batch_generation():
     """Test batch generation of multiple CoT messages."""
     from src.cot_generator import CoTGenerator
     from src.cot_schemas import SentinelDetection
-    from tests.conftest import create_sample_detection
+    from tests.helpers import create_sample_detection
 
     detections = [
         SentinelDetection(**create_sample_detection(node_id=f"sentry-{i}"))

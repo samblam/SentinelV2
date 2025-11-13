@@ -85,7 +85,7 @@ async def test_client_sends_batch_cot_messages():
     from src.tak_client import TAKClient
     from src.cot_generator import CoTGenerator
     from src.cot_schemas import SentinelDetection
-    from tests.conftest import create_sample_detection
+    from tests.helpers import create_sample_detection
 
     server = MockTAKServer(host='127.0.0.1', port=18092)
     await server.start()
@@ -131,7 +131,7 @@ async def test_server_handles_multiple_clients():
     from src.tak_client import TAKClient
     from src.cot_generator import CoTGenerator
     from src.cot_schemas import SentinelDetection
-    from tests.conftest import create_sample_detection
+    from tests.helpers import create_sample_detection
 
     server = MockTAKServer(host='127.0.0.1', port=18093)
     await server.start()
@@ -240,7 +240,7 @@ async def test_server_clears_messages():
     from src.tak_client import TAKClient
     from src.cot_generator import CoTGenerator
     from src.cot_schemas import SentinelDetection
-    from tests.conftest import create_sample_detection
+    from tests.helpers import create_sample_detection
 
     server = MockTAKServer(host='127.0.0.1', port=18096)
     await server.start()
@@ -277,7 +277,7 @@ async def test_client_with_context_manager():
     from src.tak_client import TAKClient
     from src.cot_generator import CoTGenerator
     from src.cot_schemas import SentinelDetection
-    from tests.conftest import create_sample_detection
+    from tests.helpers import create_sample_detection
 
     server = MockTAKServer(host='127.0.0.1', port=18097)
     await server.start()
