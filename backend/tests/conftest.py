@@ -1,4 +1,10 @@
 """Pytest fixtures and configuration for backend tests."""
+import sys
+import os
+
+# Add parent directory to path for atak_integration imports
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', '..'))
+
 import pytest
 import pytest_asyncio
 from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession, async_sessionmaker
