@@ -1,8 +1,15 @@
 # Module 2: Resilient Backend API - Complete Implementation Specification
 
-**Purpose:** Network-resilient ingestion, storage, and coordination layer for multiple edge nodes  
-**Target:** Zero data loss under 50% packet loss, <1s WebSocket latency, persistent audit trail  
+**Purpose:** Network-resilient ingestion, storage, and coordination layer for multiple edge nodes
+**Target:** Zero data loss under 50% packet loss, <1s WebSocket latency, persistent audit trail
 **Implementation Method:** Claude Code agent with TDD
+
+**✨ Key Improvements (Added 2025-11-13):**
+- ✅ **JSONB Storage**: Changed `Text` → `JSONB` for all JSON fields (better performance, native querying)
+- ✅ **Database Indexes**: Added indexes on frequently queried columns (node_id, timestamp, status, last_heartbeat)
+- ✅ **Heartbeat Endpoint**: `POST /api/nodes/{id}/heartbeat` for health monitoring
+- ✅ **Blackout Coordination**: `POST /api/blackout/activate` and `POST /api/blackout/deactivate` for covert operations
+- ✅ **Security Section**: Comprehensive security considerations with production roadmap
 
 ---
 
@@ -179,7 +186,8 @@ async def test_queue_item_persistence():
 
 ```python
 # src/models.py
-from sqlalchemy import Column, Integer, String, Float, DateTime, Text, ForeignKey, Boolean
+from sqlalchemy import Column, Integer, String, Float, DateTime, Text, ForeignKey, Boolean, Index
+from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import relationship
 from datetime import datetime, timezone
@@ -189,13 +197,13 @@ Base = declarative_base()
 class Node(Base):
     """Edge node registry"""
     __tablename__ = "nodes"
-    
+
     id = Column(Integer, primary_key=True, index=True)
     node_id = Column(String, unique=True, index=True, nullable=False)
-    status = Column(String, nullable=False)  # online, offline, covert
-    last_heartbeat = Column(DateTime(timezone=True), nullable=True)
+    status = Column(String, nullable=False, index=True)  # online, offline, covert
+    last_heartbeat = Column(DateTime(timezone=True), nullable=True, index=True)
     created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
-    
+
     # Relationships
     detections = relationship("Detection", back_populates="node")
     queue_items = relationship("QueueItem", back_populates="node")
@@ -204,35 +212,35 @@ class Node(Base):
 class Detection(Base):
     """Detection records with full metadata"""
     __tablename__ = "detections"
-    
+
     id = Column(Integer, primary_key=True, index=True)
-    node_id = Column(Integer, ForeignKey("nodes.id"), nullable=False)
+    node_id = Column(Integer, ForeignKey("nodes.id"), nullable=False, index=True)
     timestamp = Column(DateTime(timezone=True), nullable=False, index=True)
     latitude = Column(Float, nullable=False)
     longitude = Column(Float, nullable=False)
     altitude_m = Column(Float, nullable=True)
     accuracy_m = Column(Float, nullable=True)
-    detections_json = Column(Text, nullable=False)  # JSON string of detections array
+    detections_json = Column(JSONB, nullable=False)  # PostgreSQL JSONB for efficient querying
     detection_count = Column(Integer, nullable=False)
     inference_time_ms = Column(Float, nullable=True)
     model = Column(String, nullable=True)
-    created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
-    
+    created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc), index=True)
+
     # Relationships
     node = relationship("Node", back_populates="detections")
 
 class QueueItem(Base):
     """Pending transmissions during network issues"""
     __tablename__ = "queue_items"
-    
+
     id = Column(Integer, primary_key=True, index=True)
-    node_id = Column(Integer, ForeignKey("nodes.id"), nullable=False)
-    payload = Column(Text, nullable=False)  # JSON string
-    status = Column(String, nullable=False)  # pending, processing, completed, failed
+    node_id = Column(Integer, ForeignKey("nodes.id"), nullable=False, index=True)
+    payload = Column(JSONB, nullable=False)  # PostgreSQL JSONB for flexible payload storage
+    status = Column(String, nullable=False, index=True)  # pending, processing, completed, failed
     retry_count = Column(Integer, default=0)
-    created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
+    created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc), index=True)
     processed_at = Column(DateTime(timezone=True), nullable=True)
-    
+
     # Relationships
     node = relationship("Node", back_populates="queue_items")
 
@@ -397,18 +405,18 @@ class QueueManager:
     async def enqueue(self, node_id: int, payload: Dict[str, Any]) -> int:
         """
         Add message to queue
-        
+
         Args:
             node_id: Node ID
-            payload: Message payload
-            
+            payload: Message payload (will be stored as JSONB)
+
         Returns:
             Queue item ID
         """
         async with AsyncSessionLocal() as session:
             queue_item = QueueItem(
                 node_id=node_id,
-                payload=json.dumps(payload),
+                payload=payload,  # JSONB handles serialization automatically
                 status="pending",
                 retry_count=0
             )
@@ -427,11 +435,11 @@ class QueueManager:
                 .order_by(QueueItem.created_at)
             )
             items = result.scalars().all()
-            
+
             return [
                 {
                     "id": item.id,
-                    "payload": json.loads(item.payload),
+                    "payload": item.payload,  # JSONB automatically deserialized
                     "retry_count": item.retry_count,
                     "created_at": item.created_at
                 }
@@ -773,7 +781,7 @@ async def ingest_detection(
         longitude=detection.location["longitude"],
         altitude_m=detection.location.get("altitude_m"),
         accuracy_m=detection.location.get("accuracy_m"),
-        detections_json=json.dumps(detection.detections),
+        detections_json=detection.detections,  # JSONB handles serialization automatically
         detection_count=detection.detection_count,
         inference_time_ms=detection.inference_time_ms,
         model=detection.model
@@ -827,14 +835,133 @@ async def get_node_status(
         select(Node).where(Node.node_id == node_id)
     )
     node = result.scalar_one_or_none()
-    
+
     if not node:
         raise HTTPException(status_code=404, detail="Node not found")
-    
+
     return {
         "node_id": node.node_id,
         "status": node.status,
         "last_heartbeat": node.last_heartbeat
+    }
+
+@app.post("/api/nodes/{node_id}/heartbeat")
+async def node_heartbeat(
+    node_id: str,
+    db: AsyncSession = Depends(get_db)
+):
+    """
+    Record node heartbeat to track health status
+
+    Updates last_heartbeat timestamp and sets status to active
+    """
+    result = await db.execute(
+        select(Node).where(Node.node_id == node_id)
+    )
+    node = result.scalar_one_or_none()
+
+    if not node:
+        raise HTTPException(status_code=404, detail="Node not found")
+
+    node.last_heartbeat = datetime.now(timezone.utc)
+    if node.status == "offline":
+        node.status = "online"
+
+    await db.commit()
+
+    return {
+        "node_id": node.node_id,
+        "status": node.status,
+        "last_heartbeat": node.last_heartbeat
+    }
+
+@app.post("/api/blackout/activate")
+async def activate_blackout(
+    node_id: str,
+    db: AsyncSession = Depends(get_db)
+):
+    """
+    Activate blackout mode for a node
+
+    Queues all subsequent detections from this node until deactivated
+    """
+    result = await db.execute(
+        select(Node).where(Node.node_id == node_id)
+    )
+    node = result.scalar_one_or_none()
+
+    if not node:
+        raise HTTPException(status_code=404, detail="Node not found")
+
+    # Update node status to covert
+    node.status = "covert"
+
+    # Create blackout event
+    blackout_event = BlackoutEvent(
+        node_id=node.id,
+        activated_at=datetime.now(timezone.utc),
+        activated_by="operator"
+    )
+    db.add(blackout_event)
+    await db.commit()
+
+    return {
+        "status": "activated",
+        "node_id": node_id,
+        "activated_at": blackout_event.activated_at
+    }
+
+@app.post("/api/blackout/deactivate")
+async def deactivate_blackout(
+    node_id: str,
+    db: AsyncSession = Depends(get_db)
+):
+    """
+    Deactivate blackout mode for a node
+
+    Returns all queued detections and restores normal operation
+    """
+    result = await db.execute(
+        select(Node).where(Node.node_id == node_id)
+    )
+    node = result.scalar_one_or_none()
+
+    if not node:
+        raise HTTPException(status_code=404, detail="Node not found")
+
+    # Update node status back to online
+    node.status = "online"
+
+    # Get most recent blackout event
+    blackout_result = await db.execute(
+        select(BlackoutEvent)
+        .where(BlackoutEvent.node_id == node.id)
+        .where(BlackoutEvent.deactivated_at.is_(None))
+        .order_by(BlackoutEvent.activated_at.desc())
+        .limit(1)
+    )
+    blackout_event = blackout_result.scalar_one_or_none()
+
+    if blackout_event:
+        blackout_event.deactivated_at = datetime.now(timezone.utc)
+
+    # Get queued detections
+    queue_result = await db.execute(
+        select(QueueItem)
+        .where(QueueItem.node_id == node.id)
+        .where(QueueItem.status == "pending")
+    )
+    queued_items = queue_result.scalars().all()
+
+    blackout_event.detections_queued = len(queued_items) if blackout_event else 0
+
+    await db.commit()
+
+    return {
+        "status": "deactivated",
+        "node_id": node_id,
+        "queued_count": len(queued_items),
+        "queued_detections": [item.payload for item in queued_items]
     }
 
 @app.websocket("/ws")
@@ -1234,6 +1361,96 @@ Success criteria:
 - ✅ GitHub Actions CI/CD
 - ✅ Network resilience tests
 - ✅ Load testing scripts
+
+---
+
+## Security Considerations
+
+**⚠️ DEMO SYSTEM NOTICE**
+
+This is a **demonstration system** designed for a DND contest submission and job application portfolio. The following security features are **intentionally excluded** to keep the scope manageable within the 5-day timeline (Nov 13-18):
+
+### Not Implemented (Demo System)
+- ❌ **Authentication/Authorization**: No user authentication, API keys, or JWT tokens
+- ❌ **Encryption in Transit**: No HTTPS/TLS (HTTP only)
+- ❌ **Encryption at Rest**: No database encryption
+- ❌ **Rate Limiting**: No request throttling or DDoS protection
+- ❌ **Input Sanitization**: Basic Pydantic validation only, no advanced sanitization
+- ❌ **SQL Injection Protection**: Relying on SQLAlchemy ORM (good) but no additional layers
+- ❌ **CSRF Protection**: No cross-site request forgery protection
+- ❌ **Secrets Management**: Using environment variables only
+- ❌ **API Versioning**: No /v1/ versioning for backward compatibility
+
+### Rationale for Exclusions
+
+From **Sentinel_v2_Complete_Strategy.md**:
+
+> "This is a demonstration system. The goal is to show architectural thinking, edge computing patterns, and resilient design - not to build a production-hardened fortress. Security features would add 2-3 weeks of work and obscure the core innovation (Blackout Protocol + Edge Intelligence)."
+
+### Would Add for Production
+
+Before any real deployment, the following security features would be implemented:
+
+**Phase 1: Core Security (Week 1)**
+- ✅ OAuth 2.0 or JWT authentication for API endpoints
+- ✅ HTTPS with TLS 1.3 (Let's Encrypt certificates)
+- ✅ PostgreSQL connection encryption (SSL/TLS)
+- ✅ API rate limiting per IP/API key (e.g., 100 req/min with Redis)
+- ✅ Comprehensive input validation and sanitization
+- ✅ CORS policy tightening (specific origins only)
+- ✅ Secrets management with HashiCorp Vault or AWS Secrets Manager
+
+**Phase 2: Advanced Security (Week 2)**
+- ✅ PostgreSQL transparent data encryption (TDE) at rest
+- ✅ Request/response signing for data integrity
+- ✅ Audit logging for all operations (who, what, when)
+- ✅ Database connection pooling limits
+- ✅ SQL injection prevention (parameterized queries + WAF)
+- ✅ API versioning (/api/v1/ prefix)
+- ✅ Security headers (HSTS, CSP, X-Frame-Options)
+
+**Phase 3: Operational Security (Week 3)**
+- ✅ Intrusion detection system (IDS)
+- ✅ Automated vulnerability scanning (Snyk, OWASP ZAP)
+- ✅ Security incident response playbook
+- ✅ Penetration testing by third party
+- ✅ Compliance documentation (if required)
+- ✅ Backup encryption and disaster recovery
+
+### Current Security Posture
+
+**What We Do Have:**
+- ✅ SQLAlchemy ORM prevents basic SQL injection
+- ✅ Pydantic validation prevents type confusion attacks
+- ✅ FastAPI automatic request validation
+- ✅ PostgreSQL role-based access control (DB level)
+- ✅ Docker network isolation (if deployed with docker-compose)
+- ✅ Environment variable configuration (12-factor app)
+
+**Known Vulnerabilities (Acceptable for Demo):**
+- ⚠️ No authentication - anyone can POST to /api/detections
+- ⚠️ No rate limiting - vulnerable to DoS attacks
+- ⚠️ No HTTPS - traffic visible to network sniffers
+- ⚠️ No audit trail - can't track who did what
+- ⚠️ CORS set to * - any origin can access API
+- ⚠️ No input sanitization beyond type checking
+- ⚠️ Database credentials in plaintext .env file
+
+### For Evaluators
+
+**This system demonstrates:**
+- ✅ Architectural patterns (edge computing, async I/O, event-driven)
+- ✅ Resilient design (queue-based, retry logic, database persistence)
+- ✅ Modern tech stack (FastAPI, PostgreSQL, WebSocket, Docker)
+- ✅ Test-driven development (>75% coverage target)
+- ✅ Production deployment readiness (Docker, migrations, health checks)
+
+**This system intentionally does NOT demonstrate:**
+- ❌ Enterprise security hardening
+- ❌ Compliance frameworks (SOC 2, HIPAA, FedRAMP)
+- ❌ Advanced threat modeling
+
+**Security would be Phase 2** of development if this project were to be deployed in a real Arctic surveillance scenario. The 3-week security roadmap above is realistic and achievable.
 
 ---
 
