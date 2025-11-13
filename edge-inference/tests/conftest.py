@@ -102,8 +102,7 @@ async def blackout_controller():
     db_path = db_file.name
     db_file.close()
 
-    controller = BlackoutController(db_path=db_path)
-    yield controller
+    yield BlackoutController(db_path=db_path)
 
     # Cleanup
     try:

@@ -77,3 +77,51 @@ def test_multiple_inferences(run_number):
     result = engine.detect(str(test_image))
     assert "detections" in result
     assert result["inference_time_ms"] < 100
+
+
+def test_inference_nonexistent_image():
+    """Test inference raises ImageLoadError for non-existent file"""
+    from src.inference import ImageLoadError
+
+    engine = InferenceEngine()
+
+    with pytest.raises(ImageLoadError, match="Image file not found"):
+        engine.detect("/nonexistent/path/image.jpg")
+
+
+def test_inference_corrupted_image():
+    """Test inference handles corrupted image gracefully"""
+    from src.inference import ImageLoadError
+    import tempfile
+
+    engine = InferenceEngine()
+
+    # Create a corrupted "image" file with invalid data
+    with tempfile.NamedTemporaryFile(delete=False, suffix=".jpg") as tmp:
+        tmp.write(b"This is not a valid image file, just random text")
+        tmp_path = tmp.name
+
+    try:
+        with pytest.raises(ImageLoadError, match="Failed to load image"):
+            engine.detect(tmp_path)
+    finally:
+        Path(tmp_path).unlink()
+
+
+def test_inference_invalid_file_type():
+    """Test inference rejects non-image files"""
+    from src.inference import ImageLoadError
+    import tempfile
+
+    engine = InferenceEngine()
+
+    # Create a text file
+    with tempfile.NamedTemporaryFile(delete=False, suffix=".txt", mode='w') as tmp:
+        tmp.write("This is a text file, not an image")
+        tmp_path = tmp.name
+
+    try:
+        with pytest.raises(ImageLoadError):
+            engine.detect(tmp_path)
+    finally:
+        Path(tmp_path).unlink()

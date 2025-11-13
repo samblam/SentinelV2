@@ -248,7 +248,7 @@ async def test_full_arctic_deployment_simulation(client, test_image_path):
         with open(test_image_path, 'rb') as f:
             files = {"file": (f"normal_{i}.jpg", f, "image/jpeg")}
             response = await client.post(
-                f"/detect?node_id=arctic-base-01",
+                "/detect?node_id=arctic-base-01",
                 files=files
             )
         assert response.status_code == 200
@@ -267,7 +267,7 @@ async def test_full_arctic_deployment_simulation(client, test_image_path):
         with open(test_image_path, 'rb') as f:
             files = {"file": (f"covert_{i}.jpg", f, "image/jpeg")}
             response = await client.post(
-                f"/detect?node_id=arctic-base-01",
+                "/detect?node_id=arctic-base-01",
                 files=files
             )
         assert response.json()["status"] == "queued"

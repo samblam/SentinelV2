@@ -41,6 +41,21 @@ def test_bbox_invalid_type():
         BBox(xmin="not a number", ymin=20, xmax=100, ymax=200)
 
 
+def test_bbox_missing_required_fields():
+    """Test BBox raises ValidationError when required fields are missing"""
+    with pytest.raises(ValidationError):
+        BBox(ymin=20, xmax=100, ymax=200)
+
+    with pytest.raises(ValidationError):
+        BBox(xmin=10, xmax=100, ymax=200)
+
+    with pytest.raises(ValidationError):
+        BBox(xmin=10, ymin=20, ymax=200)
+
+    with pytest.raises(ValidationError):
+        BBox(xmin=10, ymin=20, xmax=100)
+
+
 def test_detection_valid():
     """Test Detection model with valid data"""
     bbox = BBox(xmin=10.5, ymin=20.3, xmax=100.7, ymax=200.9)
@@ -98,6 +113,50 @@ def test_detection_confidence_bounds():
     assert detection_max.confidence == 1.0
 
 
+def test_detection_confidence_out_of_bounds():
+    """Test Detection rejects out-of-bounds confidence values"""
+    # Confidence less than 0
+    with pytest.raises(ValidationError):
+        Detection(
+            bbox=BBox(xmin=0, ymin=0, xmax=10, ymax=10),
+            class_name="car",
+            confidence=-0.1,
+            class_id=2
+        )
+
+    # Confidence greater than 1
+    with pytest.raises(ValidationError):
+        Detection(
+            bbox=BBox(xmin=0, ymin=0, xmax=10, ymax=10),
+            class_name="car",
+            confidence=1.1,
+            class_id=2
+        )
+
+
+def test_detection_missing_required_fields():
+    """Test Detection raises ValidationError when required fields are missing"""
+    # Missing bbox
+    with pytest.raises(ValidationError):
+        Detection(class_name="person", confidence=0.9, class_id=0)
+
+    # Missing class_name
+    with pytest.raises(ValidationError):
+        Detection(
+            bbox=BBox(xmin=0, ymin=0, xmax=10, ymax=10),
+            confidence=0.9,
+            class_id=0
+        )
+
+    # Missing confidence
+    with pytest.raises(ValidationError):
+        Detection(
+            bbox=BBox(xmin=0, ymin=0, xmax=10, ymax=10),
+            class_name="person",
+            class_id=0
+        )
+
+
 def test_location_valid():
     """Test Location model with valid Arctic coordinates"""
     location = Location(
@@ -132,6 +191,34 @@ def test_location_extreme_values():
         accuracy_m=20.0
     )
     assert south_pole.latitude == -90.0
+
+
+def test_location_invalid_coordinates():
+    """Test Location rejects invalid latitude and longitude values"""
+    # Latitude > 90
+    with pytest.raises(ValidationError):
+        Location(latitude=91.0, longitude=0.0, altitude_m=0.0, accuracy_m=5.0)
+
+    # Latitude < -90
+    with pytest.raises(ValidationError):
+        Location(latitude=-91.0, longitude=0.0, altitude_m=0.0, accuracy_m=5.0)
+
+    # Longitude > 180
+    with pytest.raises(ValidationError):
+        Location(latitude=0.0, longitude=181.0, altitude_m=0.0, accuracy_m=5.0)
+
+    # Longitude < -180
+    with pytest.raises(ValidationError):
+        Location(latitude=0.0, longitude=-181.0, altitude_m=0.0, accuracy_m=5.0)
+
+
+def test_location_missing_required_fields():
+    """Test Location raises ValidationError when required fields are missing"""
+    with pytest.raises(ValidationError):
+        Location(longitude=0.0, altitude_m=0.0, accuracy_m=5.0)
+
+    with pytest.raises(ValidationError):
+        Location(latitude=70.0, altitude_m=0.0, accuracy_m=5.0)
 
 
 def test_detection_message_complete():
