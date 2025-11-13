@@ -1,0 +1,21 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<event version="2.0" uid="SENTINEL-DET-660e8400-e29b-41d4-a716-446655440001" type="a-f-G-E-S" time="2025-01-15T14:25:10.234567Z" start="2025-01-15T14:25:10.234567Z" stale="2025-01-15T14:30:10.234567Z">
+  <point lat="71.3" lon="-99.8" hae="35.0" ce="15.0" le="9999999.0"/>
+  <detail>
+    <contact callsign="arctic-sentry-02"/>
+    <remarks>Multiple detections: 1 person, 1 vehicle</remarks>
+    <_flow-tags_ sentinel_version="2.0"/>
+    <detection>
+      <object_class>person</object_class>
+      <confidence>0.92</confidence>
+      <inference_time_ms>112.3</inference_time_ms>
+      <bbox xmin="100" ymin="150" xmax="300" ymax="400"/>
+    </detection>
+    <detection>
+      <object_class>vehicle</object_class>
+      <confidence>0.85</confidence>
+      <inference_time_ms>112.3</inference_time_ms>
+      <bbox xmin="350" ymin="200" xmax="500" ymax="450"/>
+    </detection>
+  </detail>
+</event>

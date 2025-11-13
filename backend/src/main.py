@@ -24,6 +24,14 @@ from src.schemas import (
 from src.websocket import ConnectionManager
 from src.queue import QueueManager
 
+# Import CoT integration (Module 3)
+import sys
+import os
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', '..'))
+from atak_integration.src.cot_generator import CoTGenerator
+from atak_integration.src.cot_schemas import SentinelDetection as CoTSentinelDetection
+from atak_integration.src.tak_client import TAKClient
+
 # Configure logging
 logging.basicConfig(
     level=logging.INFO,
@@ -40,16 +48,83 @@ def get_queue_manager():
     return QueueManager()
 
 
+def get_cot_generator():
+    """Dependency for CoT generator."""
+    if not hasattr(app.state, 'cot_generator'):
+        # Initialize if not already set (e.g., in tests)
+        if settings.COT_ENABLED:
+            app.state.cot_generator = CoTGenerator(
+                stale_minutes=settings.COT_STALE_MINUTES,
+                cot_type=settings.COT_TYPE
+            )
+        else:
+            app.state.cot_generator = None
+    return app.state.cot_generator
+
+
+def get_tak_client():
+    """Dependency for TAK client."""
+    if not hasattr(app.state, 'tak_client'):
+        # Initialize if not already set (e.g., in tests)
+        if settings.TAK_SERVER_ENABLED:
+            app.state.tak_client = TAKClient(
+                host=settings.TAK_SERVER_HOST,
+                port=settings.TAK_SERVER_PORT
+            )
+        else:
+            app.state.tak_client = None
+    return app.state.tak_client
+
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     """Application lifespan manager."""
     logger.info("Starting Sentinel v2 Backend API...")
+
+    # Initialize database
     try:
         await init_db()
         logger.info("Database initialized")
     except Exception as e:
         logger.warning(f"Database initialization skipped: {e}")
+
+    # Initialize CoT generator
+    if settings.COT_ENABLED:
+        app.state.cot_generator = CoTGenerator(
+            stale_minutes=settings.COT_STALE_MINUTES,
+            cot_type=settings.COT_TYPE
+        )
+        logger.info("CoT generator initialized")
+    else:
+        app.state.cot_generator = None
+        logger.info("CoT generation disabled")
+
+    # Initialize TAK client
+    if settings.TAK_SERVER_ENABLED:
+        app.state.tak_client = TAKClient(
+            host=settings.TAK_SERVER_HOST,
+            port=settings.TAK_SERVER_PORT
+        )
+        # Connect to TAK server on startup
+        try:
+            await app.state.tak_client.connect()
+            logger.info(f"Connected to TAK server at {settings.TAK_SERVER_HOST}:{settings.TAK_SERVER_PORT}")
+        except Exception as e:
+            logger.warning(f"Failed to connect to TAK server: {e}")
+    else:
+        app.state.tak_client = None
+        logger.info("TAK server integration disabled")
+
     yield
+
+    # Cleanup: disconnect TAK client
+    if hasattr(app.state, 'tak_client') and app.state.tak_client:
+        try:
+            await app.state.tak_client.disconnect()
+            logger.info("Disconnected from TAK server")
+        except Exception as e:
+            logger.warning(f"Error disconnecting from TAK server: {e}")
+
     logger.info("Shutting down Sentinel v2 Backend API...")
 
 
@@ -437,6 +512,153 @@ async def deactivate_blackout(
         logger.error(f"Error deactivating blackout: {e}")
         await session.rollback()
         raise HTTPException(status_code=500, detail="Failed to deactivate blackout") from e
+
+
+# Helper functions for CoT integration
+async def fetch_detection_with_node(
+    detection_id: int,
+    session: AsyncSession
+) -> tuple[Detection, Node]:
+    """Fetch detection and its associated node from database.
+
+    Args:
+        detection_id: Detection ID to fetch
+        session: Database session
+
+    Returns:
+        Tuple of (detection, node)
+
+    Raises:
+        HTTPException: If detection or node not found
+    """
+    # Fetch detection
+    result = await session.execute(
+        select(Detection).where(Detection.id == detection_id)
+    )
+    detection = result.scalar_one_or_none()
+
+    if not detection:
+        raise HTTPException(status_code=404, detail="Detection not found")
+
+    # Fetch associated node
+    result = await session.execute(
+        select(Node).where(Node.id == detection.node_id)
+    )
+    node = result.scalar_one_or_none()
+
+    if not node:
+        raise HTTPException(status_code=404, detail="Associated node not found")
+
+    return detection, node
+
+
+def detection_to_cot_format(detection: Detection, node: Node) -> dict:
+    """Convert database Detection model to CoT SentinelDetection format."""
+    return {
+        "node_id": node.node_id,
+        "timestamp": detection.timestamp,
+        "latitude": detection.latitude,
+        "longitude": detection.longitude,
+        "altitude_m": detection.altitude_m or 0.0,
+        "accuracy_m": detection.accuracy_m or 10.0,
+        "detections": detection.detections_json,
+        "detection_count": detection.detection_count,
+        "inference_time_ms": detection.inference_time_ms or 0.0,
+        "model": detection.model or "unknown"
+    }
+
+
+# CoT generation endpoint
+@app.post("/api/cot/generate")
+async def generate_cot(
+    detection_id: int = Query(..., description="Detection ID to generate CoT for"),
+    session: AsyncSession = Depends(get_db),
+    cot_gen: Optional[CoTGenerator] = Depends(get_cot_generator)
+):
+    """Generate CoT XML for a specific detection."""
+    if not settings.COT_ENABLED or cot_gen is None:
+        raise HTTPException(status_code=503, detail="CoT generation is disabled")
+
+    try:
+        # Fetch detection and node
+        detection, node = await fetch_detection_with_node(detection_id, session)
+
+        # Convert to CoT format
+        cot_data = detection_to_cot_format(detection, node)
+        cot_detection = CoTSentinelDetection(**cot_data)
+
+        # Generate CoT XML
+        cot_xml = cot_gen.generate(cot_detection)
+
+        logger.info(f"Generated CoT for detection {detection_id}")
+
+        return {
+            "status": "success",
+            "detection_id": detection_id,
+            "node_id": node.node_id,
+            "cot_xml": cot_xml,
+            "timestamp": datetime.now(timezone.utc).isoformat()
+        }
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error generating CoT: {e}")
+        raise HTTPException(status_code=500, detail=f"Failed to generate CoT: {str(e)}") from e
+
+
+# CoT send endpoint
+@app.post("/api/cot/send")
+async def send_cot_to_tak(
+    detection_id: int = Query(..., description="Detection ID to send to TAK server"),
+    session: AsyncSession = Depends(get_db),
+    cot_gen: Optional[CoTGenerator] = Depends(get_cot_generator),
+    tak: Optional[TAKClient] = Depends(get_tak_client)
+):
+    """Generate CoT XML and send to TAK server."""
+    if not settings.COT_ENABLED or cot_gen is None:
+        raise HTTPException(status_code=503, detail="CoT generation is disabled")
+
+    if not settings.TAK_SERVER_ENABLED or tak is None:
+        raise HTTPException(status_code=503, detail="TAK server integration is disabled")
+
+    try:
+        # Fetch detection and node
+        detection, node = await fetch_detection_with_node(detection_id, session)
+
+        # Convert to CoT format
+        cot_data = detection_to_cot_format(detection, node)
+        cot_detection = CoTSentinelDetection(**cot_data)
+
+        # Generate CoT XML
+        cot_xml = cot_gen.generate(cot_detection)
+
+        # Connect to TAK server if not connected
+        if not tak.is_connected():
+            await tak.connect()
+
+        # Send to TAK server
+        success = await tak.send_cot(cot_xml)
+
+        if not success:
+            raise HTTPException(status_code=500, detail="Failed to send CoT to TAK server")
+
+        logger.info(f"Sent CoT for detection {detection_id} to TAK server")
+
+        return {
+            "status": "sent",
+            "detection_id": detection_id,
+            "node_id": node.node_id,
+            "tak_server": f"{settings.TAK_SERVER_HOST}:{settings.TAK_SERVER_PORT}",
+            "cot_xml": cot_xml,
+            "timestamp": datetime.now(timezone.utc).isoformat()
+        }
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error sending CoT to TAK: {e}")
+        raise HTTPException(status_code=500, detail=f"Failed to send CoT to TAK: {str(e)}") from e
 
 
 # WebSocket endpoint
