@@ -118,13 +118,13 @@ async def register_node(
 # Node heartbeat endpoint
 @app.post("/api/nodes/{node_id}/heartbeat")
 async def node_heartbeat(
-    node_id: int,
+    node_id: str,
     session: AsyncSession = Depends(get_db)
 ):
     """Update node heartbeat timestamp."""
     try:
         result = await session.execute(
-            select(Node).where(Node.id == node_id)
+            select(Node).where(Node.node_id == node_id)
         )
         node = result.scalar_one_or_none()
 
@@ -148,13 +148,13 @@ async def node_heartbeat(
 # Get node status endpoint
 @app.get("/api/nodes/{node_id}/status", response_model=NodeResponse)
 async def get_node_status(
-    node_id: int,
+    node_id: str,
     session: AsyncSession = Depends(get_db)
 ):
     """Get node status."""
     try:
         result = await session.execute(
-            select(Node).where(Node.id == node_id)
+            select(Node).where(Node.node_id == node_id)
         )
         node = result.scalar_one_or_none()
 

@@ -195,18 +195,17 @@ async def test_node_heartbeat_updates_timestamp(test_engine, get_session):
         session.add(node)
         await session.commit()
         await session.refresh(node)
-        node_id = node.id
         old_heartbeat = node.last_heartbeat
 
     transport = ASGITransport(app=app)
     async with AsyncClient(transport=transport, base_url="http://test") as client:
-        response = await client.post(f"/api/nodes/{node_id}/heartbeat")
+        response = await client.post(f"/api/nodes/heartbeat-node/heartbeat")
         assert response.status_code == 200
 
     # Verify heartbeat was updated
     async with get_session() as session:
         from sqlalchemy import select
-        result = await session.execute(select(Node).where(Node.id == node_id))
+        result = await session.execute(select(Node).where(Node.node_id == "heartbeat-node"))
         node = result.scalar_one()
         assert node.last_heartbeat > old_heartbeat
 

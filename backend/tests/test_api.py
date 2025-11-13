@@ -151,11 +151,10 @@ async def test_get_node_status(test_engine, get_session):
         session.add(node)
         await session.commit()
         await session.refresh(node)
-        node_id = node.id
 
     transport = ASGITransport(app=app)
     async with AsyncClient(transport=transport, base_url="http://test") as client:
-        response = await client.get(f"/api/nodes/{node_id}/status")
+        response = await client.get(f"/api/nodes/test-node/status")
         assert response.status_code == 200
         data = response.json()
         assert data["status"] == "online"
@@ -170,18 +169,17 @@ async def test_node_heartbeat(test_engine, get_session):
         session.add(node)
         await session.commit()
         await session.refresh(node)
-        node_id = node.id
 
     transport = ASGITransport(app=app)
     async with AsyncClient(transport=transport, base_url="http://test") as client:
-        response = await client.post(f"/api/nodes/{node_id}/heartbeat")
+        response = await client.post(f"/api/nodes/test-node/heartbeat")
         assert response.status_code == 200
         data = response.json()
         assert data["status"] == "success"
 
     # Verify heartbeat was updated
     async with get_session() as session:
-        result = await session.execute(select(Node).where(Node.id == node_id))
+        result = await session.execute(select(Node).where(Node.node_id == "test-node"))
         node = result.scalar_one()
         assert node.last_heartbeat is not None
 

@@ -14,7 +14,7 @@ async def test_heartbeat_nonexistent_node(test_engine, get_session):
     """Test heartbeat for nonexistent node."""
     transport = ASGITransport(app=app)
     async with AsyncClient(transport=transport, base_url="http://test") as client:
-        response = await client.post("/api/nodes/999999/heartbeat")
+        response = await client.post("/api/nodes/nonexistent-node/heartbeat")
         assert response.status_code == 404
 
 
@@ -23,7 +23,7 @@ async def test_get_node_status_nonexistent(test_engine, get_session):
     """Test getting status of nonexistent node."""
     transport = ASGITransport(app=app)
     async with AsyncClient(transport=transport, base_url="http://test") as client:
-        response = await client.get("/api/nodes/999999/status")
+        response = await client.get("/api/nodes/nonexistent-node/status")
         assert response.status_code == 404
 
 
