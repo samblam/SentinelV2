@@ -5,6 +5,8 @@ import pytest
 from pathlib import Path
 from PIL import Image, ImageDraw
 import io
+from httpx import AsyncClient
+import os
 
 
 @pytest.fixture(scope="session")
@@ -68,3 +70,42 @@ def empty_detection_result():
         "inference_time_ms": 45.2,
         "model": "yolov5n"
     }
+
+
+@pytest.fixture
+async def client():
+    """Create async HTTP client for API testing"""
+    # Import here to avoid circular imports
+    from src.main import app
+
+    # Clean up any existing blackout database before tests
+    blackout_db = Path("blackout_queue.db")
+    if blackout_db.exists():
+        blackout_db.unlink()
+
+    async with AsyncClient(app=app, base_url="http://test") as ac:
+        yield ac
+
+    # Cleanup after tests
+    if blackout_db.exists():
+        blackout_db.unlink()
+
+
+@pytest.fixture
+async def blackout_controller():
+    """Create a BlackoutController for testing"""
+    from src.blackout import BlackoutController
+    import tempfile
+
+    # Use a temporary database file
+    db_file = tempfile.NamedTemporaryFile(delete=False, suffix=".db")
+    db_path = db_file.name
+    db_file.close()
+
+    yield BlackoutController(db_path=db_path)
+
+    # Cleanup
+    try:
+        os.unlink(db_path)
+    except FileNotFoundError:
+        pass

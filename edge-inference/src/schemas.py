@@ -1,7 +1,7 @@
 """
 Pydantic schemas for data validation
 """
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator, ConfigDict
 from typing import List, Optional
 from datetime import datetime
 
@@ -18,17 +18,16 @@ class Detection(BaseModel):
     """Single object detection"""
     bbox: BBox
     class_name: str = Field(..., alias="class")
-    confidence: float
+    confidence: float = Field(..., ge=0.0, le=1.0, description="Confidence score between 0 and 1")
     class_id: int
 
-    class Config:
-        populate_by_name = True
+    model_config = ConfigDict(populate_by_name=True)
 
 
 class Location(BaseModel):
     """GPS location"""
-    latitude: float
-    longitude: float
+    latitude: float = Field(..., ge=-90.0, le=90.0, description="Latitude in degrees")
+    longitude: float = Field(..., ge=-180.0, le=180.0, description="Longitude in degrees")
     altitude_m: float
     accuracy_m: float
 
