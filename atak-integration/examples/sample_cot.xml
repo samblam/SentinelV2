@@ -1,0 +1,15 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<event version="2.0" uid="SENTINEL-DET-550e8400-e29b-41d4-a716-446655440000" type="a-f-G-E-S" time="2025-01-15T14:23:45.123456Z" start="2025-01-15T14:23:45.123456Z" stale="2025-01-15T14:28:45.123456Z">
+  <point lat="70.5" lon="-100.2" hae="50.0" ce="10.0" le="9999999.0"/>
+  <detail>
+    <contact callsign="arctic-sentry-01"/>
+    <remarks>Person detected (conf: 0.89)</remarks>
+    <_flow-tags_ sentinel_version="2.0"/>
+    <detection>
+      <object_class>person</object_class>
+      <confidence>0.89</confidence>
+      <inference_time_ms>87.5</inference_time_ms>
+      <bbox xmin="100" ymin="150" xmax="300" ymax="400"/>
+    </detection>
+  </detail>
+</event>
