@@ -155,8 +155,7 @@ async def get_nodes(
         result = await session.execute(
             select(Node).order_by(Node.created_at)
         )
-        nodes = result.scalars().all()
-        return nodes
+        return result.scalars().all()
 
     except Exception as e:
         logger.error(f"Error getting nodes: {e}")
@@ -327,9 +326,8 @@ async def get_detections(
         detections = result.scalars().unique().all()
 
         # Manually construct responses with string node_id
-        response_list = []
-        for detection in detections:
-            response_list.append(DetectionResponse(
+        return [
+            DetectionResponse(
                 id=detection.id,
                 node_id=detection.node.node_id,  # String node_id from relationship
                 timestamp=detection.timestamp,
@@ -341,9 +339,9 @@ async def get_detections(
                 detection_count=detection.detection_count,
                 inference_time_ms=detection.inference_time_ms,
                 model=detection.model
-            ))
-
-        return response_list
+            )
+            for detection in detections
+        ]
 
     except Exception as e:
         logger.error(f"Error getting detections: {e}")
