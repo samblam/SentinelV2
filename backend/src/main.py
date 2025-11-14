@@ -145,6 +145,24 @@ async def node_heartbeat(
         raise HTTPException(status_code=500, detail="Failed to update heartbeat") from e
 
 
+# Get all nodes endpoint
+@app.get("/api/nodes", response_model=List[NodeResponse])
+async def get_nodes(
+    session: AsyncSession = Depends(get_db)
+):
+    """Get all registered nodes."""
+    try:
+        result = await session.execute(
+            select(Node).order_by(Node.created_at)
+        )
+        nodes = result.scalars().all()
+        return nodes
+
+    except Exception as e:
+        logger.error(f"Error getting nodes: {e}")
+        raise HTTPException(status_code=500, detail="Failed to get nodes") from e
+
+
 # Get node status endpoint
 @app.get("/api/nodes/{node_id}/status", response_model=NodeResponse)
 async def get_node_status(
@@ -209,15 +227,20 @@ async def ingest_detection(
             await queue_mgr.enqueue(node.id, detection_payload)
 
             # Return a response indicating queued status
-            return {
-                "id": 0,
-                "node_id": node.id,
-                "timestamp": detection_data.timestamp,
-                "latitude": detection_data.location.get("latitude"),
-                "longitude": detection_data.location.get("longitude"),
-                "detection_count": detection_data.detection_count,
-                "queued": True
-            }
+            return DetectionResponse(
+                id=0,
+                node_id=node.node_id,  # String node_id
+                timestamp=detection_data.timestamp,
+                latitude=detection_data.location.get("latitude"),
+                longitude=detection_data.location.get("longitude"),
+                altitude_m=detection_data.location.get("altitude_m"),
+                accuracy_m=detection_data.location.get("accuracy_m"),
+                detections=detection_data.detections,
+                detection_count=detection_data.detection_count,
+                inference_time_ms=detection_data.inference_time_ms,
+                model=detection_data.model,
+                queued=True
+            )
 
         # Normal mode - store detection immediately
         detection = Detection(
@@ -238,21 +261,42 @@ async def ingest_detection(
 
         logger.info(f"Ingested detection from node {node.node_id}: {detection.id}")
 
+        # Construct response
+        response = DetectionResponse(
+            id=detection.id,
+            node_id=node.node_id,  # String node_id
+            timestamp=detection.timestamp,
+            latitude=detection.latitude,
+            longitude=detection.longitude,
+            altitude_m=detection.altitude_m,
+            accuracy_m=detection.accuracy_m,
+            detections=detection.detections_json,
+            detection_count=detection.detection_count,
+            inference_time_ms=detection.inference_time_ms,
+            model=detection.model
+        )
+
         # Broadcast to WebSocket clients in background to avoid blocking
         asyncio.create_task(
             manager.broadcast({
-                "type": "new_detection",
-                "node_id": node.node_id,
-                "detection_count": detection.detection_count,
-                "timestamp": detection.timestamp.isoformat(),
-                "location": {
+                "type": "detection",  # Changed from "new_detection"
+                "data": {
+                    "id": detection.id,
+                    "node_id": node.node_id,
+                    "timestamp": detection.timestamp.isoformat(),
                     "latitude": detection.latitude,
-                    "longitude": detection.longitude
+                    "longitude": detection.longitude,
+                    "altitude_m": detection.altitude_m,
+                    "accuracy_m": detection.accuracy_m,
+                    "detections": detection.detections_json,
+                    "detection_count": detection.detection_count,
+                    "inference_time_ms": detection.inference_time_ms,
+                    "model": detection.model
                 }
             })
         )
 
-        return detection
+        return response
 
     except HTTPException:
         raise
@@ -271,14 +315,35 @@ async def get_detections(
 ):
     """Get detections with pagination."""
     try:
+        from sqlalchemy.orm import joinedload
+
         result = await session.execute(
             select(Detection)
+            .options(joinedload(Detection.node))  # Load node relationship
             .order_by(desc(Detection.timestamp))
             .limit(limit)
             .offset(offset)
         )
-        detections = result.scalars().all()
-        return detections
+        detections = result.scalars().unique().all()
+
+        # Manually construct responses with string node_id
+        response_list = []
+        for detection in detections:
+            response_list.append(DetectionResponse(
+                id=detection.id,
+                node_id=detection.node.node_id,  # String node_id from relationship
+                timestamp=detection.timestamp,
+                latitude=detection.latitude,
+                longitude=detection.longitude,
+                altitude_m=detection.altitude_m,
+                accuracy_m=detection.accuracy_m,
+                detections=detection.detections_json,  # Rename from detections_json
+                detection_count=detection.detection_count,
+                inference_time_ms=detection.inference_time_ms,
+                model=detection.model
+            ))
+
+        return response_list
 
     except Exception as e:
         logger.error(f"Error getting detections: {e}")
@@ -324,10 +389,14 @@ async def activate_blackout(
         # Broadcast to WebSocket clients
         asyncio.create_task(
             manager.broadcast({
-            "type": "blackout_activated",
-            "node_id": node.node_id,
-            "timestamp": blackout_event.activated_at.isoformat()
-        })
+                "type": "node_status",
+                "data": {
+                    "id": node.id,
+                    "node_id": node.node_id,
+                    "status": node.status,
+                    "last_heartbeat": node.last_heartbeat.isoformat() if node.last_heartbeat else None
+                }
+            })
         )
 
         return {
@@ -417,11 +486,14 @@ async def deactivate_blackout(
         # Broadcast to WebSocket clients
         asyncio.create_task(
             manager.broadcast({
-            "type": "blackout_deactivated",
-            "node_id": node.node_id,
-            "detections_transmitted": detections_transmitted,
-            "timestamp": datetime.now(timezone.utc).isoformat()
-        })
+                "type": "node_status",
+                "data": {
+                    "id": node.id,
+                    "node_id": node.node_id,
+                    "status": node.status,
+                    "last_heartbeat": node.last_heartbeat.isoformat() if node.last_heartbeat else None
+                }
+            })
         )
 
         return {
