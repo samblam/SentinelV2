@@ -14,12 +14,28 @@ async def test_websocket():
         async with websockets.connect(uri) as websocket:
             print(f"✓ Connected successfully with client_id: {client_id}")
 
-            # Wait for messages for 5 seconds
+            # Wait for connection message
             try:
                 message = await asyncio.wait_for(websocket.recv(), timeout=5.0)
                 print(f"✓ Received message: {message}")
+
+                # Parse and validate message
+                try:
+                    msg_json = json.loads(message)
+                except Exception as e:
+                    print(f"✗ Message is not valid JSON: {e}")
+                    return False
+
+                # Assert message type and client_id
+                assert msg_json.get("type") == "connection_established", \
+                    f"✗ Unexpected message type: {msg_json.get('type')}"
+                assert msg_json.get("client_id") == client_id, \
+                    f"✗ Unexpected client_id: {msg_json.get('client_id')}"
+                print("✓ Message content and type assertions passed!")
+
             except asyncio.TimeoutError:
-                print("✓ No messages received (expected for empty system)")
+                print("✗ No connection message received within 5 seconds")
+                return False
 
             print("✓ WebSocket connection test passed!")
 

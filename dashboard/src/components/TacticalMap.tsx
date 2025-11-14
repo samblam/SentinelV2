@@ -1,12 +1,13 @@
 // src/components/TacticalMap.tsx
 
-import { useEffect } from 'react';
+import { useEffect, useMemo } from 'react';
 import { MapContainer, TileLayer, Marker, Popup, Circle } from 'react-leaflet';
 import L from 'leaflet';
 import markerIcon from 'leaflet/dist/images/marker-icon.png';
 import markerIcon2x from 'leaflet/dist/images/marker-icon-2x.png';
 import markerShadow from 'leaflet/dist/images/marker-shadow.png';
 import { Detection, Node } from '@/lib/types';
+import { getConfidenceMarkerColor } from '@/utils/confidence';
 
 // Fix default marker icon paths for Vite
 delete (L.Icon.Default.prototype as any)._getIconUrl;
@@ -18,12 +19,7 @@ L.Icon.Default.mergeOptions({
 
 // Custom icons for different confidence levels
 const createDetectionIcon = (confidence: number) => {
-  let color = '#fbbf24'; // low - yellow
-  if (confidence > 0.85) {
-    color = '#ef4444'; // high - red
-  } else if (confidence > 0.7) {
-    color = '#f59e0b'; // medium - orange
-  }
+  const color = getConfidenceMarkerColor(confidence);
 
   return L.divIcon({
     className: 'custom-detection-marker',
@@ -69,6 +65,14 @@ export function TacticalMap({
     console.log('TacticalMap rendered with', detections.length, 'detections and', nodes.length, 'nodes');
   }, [detections.length, nodes.length]);
 
+  // Memoize detection confidence calculations to avoid recomputing on every render
+  const detectionsWithConfidence = useMemo(() => {
+    return detections.map((detection) => ({
+      detection,
+      maxConfidence: Math.max(...detection.detections.map((d) => d.confidence)),
+    }));
+  }, [detections]);
+
   // Arctic center: 70°N, -100°W
   const arcticCenter: [number, number] = [70, -100];
 
@@ -86,11 +90,7 @@ export function TacticalMap({
         />
 
         {/* Detection markers */}
-        {detections.map((detection) => {
-          const maxConfidence = Math.max(
-            ...detection.detections.map((d) => d.confidence)
-          );
-
+        {detectionsWithConfidence.map(({ detection, maxConfidence }) => {
           return (
             <Marker
               key={detection.id}

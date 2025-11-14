@@ -4,6 +4,7 @@ import { useState, useMemo } from 'react';
 import { ArrowUpDown, MapPin } from 'lucide-react';
 import { Detection } from '@/lib/types';
 import { cn } from '@/lib/utils';
+import { getConfidenceTextClass } from '@/utils/confidence';
 
 interface DetectionListProps {
   detections: Detection[];
@@ -23,7 +24,7 @@ export function DetectionList({
   const [sortOrder, setSortOrder] = useState<SortOrder>('desc');
 
   const sortedDetections = useMemo(() => {
-    const sorted = [...detections].sort((a, b) => {
+    return [...detections].sort((a, b) => {
       let aValue: any;
       let bValue: any;
 
@@ -52,8 +53,6 @@ export function DetectionList({
       if (aValue > bValue) return sortOrder === 'asc' ? 1 : -1;
       return 0;
     });
-
-    return sorted;
   }, [detections, sortField, sortOrder]);
 
   const handleSort = (field: SortField) => {
@@ -63,12 +62,6 @@ export function DetectionList({
       setSortField(field);
       setSortOrder('desc');
     }
-  };
-
-  const getConfidenceColor = (confidence: number) => {
-    if (confidence > 0.85) return 'text-confidence-high';
-    if (confidence > 0.7) return 'text-confidence-medium';
-    return 'text-confidence-low';
   };
 
   if (detections.length === 0) {
@@ -160,7 +153,7 @@ export function DetectionList({
                     </div>
                   </td>
                   <td className="px-4 py-3">
-                    <span className={cn('font-semibold', getConfidenceColor(maxConfidence))}>
+                    <span className={cn('font-semibold', getConfidenceTextClass(maxConfidence))}>
                       {(maxConfidence * 100).toFixed(0)}%
                     </span>
                   </td>
