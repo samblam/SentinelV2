@@ -223,7 +223,7 @@ interface NodeStatusPanelProps {
 **Status Colors:**
 - Online: Green
 - Offline: Gray
-- Blackout/Covert: Blue
+- Covert: Blue (blackout/covert operations mode)
 
 ---
 
@@ -312,7 +312,7 @@ export interface BoundingBox {
 export interface Node {
   id: number;
   node_id: string;
-  status: 'online' | 'offline' | 'blackout';
+  status: 'online' | 'offline' | 'covert';  // Backend uses 'covert' not 'blackout'
   last_heartbeat?: string;
   created_at: string;
 }
@@ -346,78 +346,39 @@ export interface Filters {
 
 ## State Management (Zustand)
 
+**Note:** React Query is the primary source of truth for server state (detections, nodes). Zustand only manages UI state.
+
 ```typescript
 // src/store/useStore.ts
 
 import { create } from 'zustand';
-import { Detection, Node, Filters } from '@/lib/types';
+import { Detection } from '@/lib/types';
 
 interface AppState {
-  // Detections
-  detections: Detection[];
+  // UI State only - React Query handles server state
   selectedDetection: Detection | null;
-  setDetections: (detections: Detection[]) => void;
-  addDetection: (detection: Detection) => void;
   setSelectedDetection: (detection: Detection | null) => void;
-  
-  // Nodes
-  nodes: Node[];
-  setNodes: (nodes: Node[]) => void;
-  updateNode: (nodeId: string, updates: Partial<Node>) => void;
-  
-  // Filters
-  filters: Filters;
-  setFilters: (filters: Partial<Filters>) => void;
-  resetFilters: () => void;
-  
-  // WebSocket
+
+  // WebSocket connection state
   isConnected: boolean;
   setIsConnected: (connected: boolean) => void;
 }
 
 export const useStore = create<AppState>((set) => ({
-  // Detections
-  detections: [],
+  // UI State
   selectedDetection: null,
-  setDetections: (detections) => set({ detections }),
-  addDetection: (detection) =>
-    set((state) => ({ detections: [detection, ...state.detections] })),
   setSelectedDetection: (detection) => set({ selectedDetection: detection }),
-  
-  // Nodes
-  nodes: [],
-  setNodes: (nodes) => set({ nodes }),
-  updateNode: (nodeId, updates) =>
-    set((state) => ({
-      nodes: state.nodes.map((node) =>
-        node.node_id === nodeId ? { ...node, ...updates } : node
-      ),
-    })),
-  
-  // Filters
-  filters: {
-    objectClass: [],
-    confidenceMin: 0.7,
-    timeRange: 'hour',
-    nodeIds: [],
-  },
-  setFilters: (filters) =>
-    set((state) => ({ filters: { ...state.filters, ...filters } })),
-  resetFilters: () =>
-    set({
-      filters: {
-        objectClass: [],
-        confidenceMin: 0.7,
-        timeRange: 'hour',
-        nodeIds: [],
-      },
-    }),
-  
+
   // WebSocket
   isConnected: false,
   setIsConnected: (connected) => set({ isConnected: connected }),
 }));
 ```
+
+**Architecture Note:**
+- **React Query** manages server state (detections, nodes) with caching, refetching, and invalidation
+- **Zustand** manages UI state (selected detection, connection status)
+- **WebSocket** updates trigger React Query cache invalidation for real-time sync
 
 ---
 
@@ -429,17 +390,22 @@ export const useStore = create<AppState>((set) => ({
 // src/hooks/useWebSocket.ts
 
 import { useEffect, useRef, useCallback } from 'react';
+import { useQueryClient } from '@tanstack/react-query';
 import { useStore } from '@/store/useStore';
 import { WebSocketMessage } from '@/lib/types';
 
-const WS_URL = import.meta.env.VITE_WS_URL || 'ws://localhost:8001/ws';
+// Generate unique client ID for WebSocket connection (required by backend)
+const CLIENT_ID = crypto.randomUUID();
+const WS_BASE_URL = import.meta.env.VITE_WS_URL || 'ws://localhost:8001/ws';
+const WS_URL = `${WS_BASE_URL}?client_id=${CLIENT_ID}`;
 
 export function useWebSocket() {
   const wsRef = useRef<WebSocket | null>(null);
   const reconnectTimeoutRef = useRef<NodeJS.Timeout>();
   const reconnectAttempts = useRef(0);
-  
-  const { addDetection, updateNode, setIsConnected } = useStore();
+
+  const queryClient = useQueryClient();
+  const { setIsConnected } = useStore();
   
   const connect = useCallback(() => {
     if (wsRef.current?.readyState === WebSocket.OPEN) return;
@@ -455,18 +421,20 @@ export function useWebSocket() {
     ws.onmessage = (event) => {
       try {
         const message: WebSocketMessage = JSON.parse(event.data);
-        
+
         switch (message.type) {
           case 'detection':
-            addDetection(message.data);
+            // New detection received - invalidate detections cache to refetch
+            console.log('New detection received:', message.data);
+            queryClient.invalidateQueries({ queryKey: ['detections'] });
             break;
           case 'node_status':
-            updateNode(message.data.node_id, message.data);
+            // Node status changed - invalidate nodes cache to refetch
+            console.log('Node status updated:', message.data);
+            queryClient.invalidateQueries({ queryKey: ['nodes'] });
             break;
-          case 'blackout_event':
-            // Handle blackout event
-            console.log('Blackout event:', message.data);
-            break;
+          default:
+            console.log('Unknown message type:', message.type);
         }
       } catch (error) {
         console.error('Error parsing WebSocket message:', error);
@@ -492,7 +460,7 @@ export function useWebSocket() {
     };
     
     wsRef.current = ws;
-  }, [addDetection, updateNode, setIsConnected]);
+  }, [queryClient, setIsConnected]);
   
   const disconnect = useCallback(() => {
     if (reconnectTimeoutRef.current) {
@@ -525,36 +493,25 @@ export function useWebSocket() {
 // src/hooks/useDetections.ts
 
 import { useQuery } from '@tanstack/react-query';
-import { useStore } from '@/store/useStore';
 import { api } from '@/lib/api';
 import { Detection } from '@/lib/types';
 
 export function useDetections() {
-  const { setDetections, filters } = useStore();
-  
-  const query = useQuery({
-    queryKey: ['detections', filters],
+  return useQuery({
+    queryKey: ['detections'],
     queryFn: async () => {
-      const params = new URLSearchParams();
-      
-      if (filters.nodeIds.length > 0) {
-        filters.nodeIds.forEach((id) => params.append('node_id', id));
-      }
-      
-      params.append('limit', '1000');
-      
-      const response = await api.get<Detection[]>('/api/detections', { params });
+      const response = await api.get<Detection[]>('/api/detections', {
+        params: { limit: 1000 }
+      });
       return response.data;
     },
-    onSuccess: (data) => {
-      setDetections(data);
-    },
     refetchInterval: 30000, // Refetch every 30s as backup to WebSocket
+    staleTime: 10000, // Consider data stale after 10s
   });
-  
-  return query;
 }
 ```
+
+**Note:** React Query v5 removed `onSuccess`. Data is now accessed directly via the hook's return value.
 
 ---
 
@@ -564,44 +521,42 @@ export function useDetections() {
 // src/hooks/useNodes.ts
 
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { useStore } from '@/store/useStore';
 import { api } from '@/lib/api';
 import { Node } from '@/lib/types';
 
 export function useNodes() {
-  const { setNodes } = useStore();
   const queryClient = useQueryClient();
-  
+
   const query = useQuery({
     queryKey: ['nodes'],
     queryFn: async () => {
       const response = await api.get<Node[]>('/api/nodes');
       return response.data;
     },
-    onSuccess: (data) => {
-      setNodes(data);
-    },
     refetchInterval: 10000, // Refetch every 10s
+    staleTime: 5000, // Consider data stale after 5s
   });
-  
+
   const activateBlackout = useMutation({
     mutationFn: async (nodeId: string) => {
-      await api.post(`/api/nodes/${nodeId}/blackout/activate`);
+      // Backend expects { node_id: string, reason?: string }
+      await api.post('/api/blackout/activate', { node_id: nodeId });
     },
     onSuccess: () => {
-      queryClient.invalidateQueries(['nodes']);
+      queryClient.invalidateQueries({ queryKey: ['nodes'] });
     },
   });
-  
+
   const deactivateBlackout = useMutation({
     mutationFn: async (nodeId: string) => {
-      await api.post(`/api/nodes/${nodeId}/blackout/deactivate`);
+      // Backend expects { node_id: string }
+      await api.post('/api/blackout/deactivate', { node_id: nodeId });
     },
     onSuccess: () => {
-      queryClient.invalidateQueries(['nodes']);
+      queryClient.invalidateQueries({ queryKey: ['nodes'] });
     },
   });
-  
+
   return {
     ...query,
     activateBlackout: activateBlackout.mutate,
@@ -609,6 +564,12 @@ export function useNodes() {
   };
 }
 ```
+
+**Important:** Backend blackout endpoints are:
+- `POST /api/blackout/activate` (not `/api/nodes/{id}/blackout/activate`)
+- `POST /api/blackout/deactivate` (not `/api/nodes/{id}/blackout/deactivate`)
+
+Both take `{ node_id: string }` in the request body.
 
 ---
 
@@ -683,7 +644,7 @@ export default {
         status: {
           online: '#10b981',
           offline: '#6b7280',
-          blackout: '#3b82f6',
+          covert: '#3b82f6',  // Backend uses 'covert' status
         },
         // Confidence colors
         confidence: {
@@ -722,15 +683,24 @@ import { useStore } from '@/store/useStore';
 const queryClient = new QueryClient();
 
 function DashboardContent() {
-  const { isConnected } = useWebSocket();
-  const { data: detections = [] } = useDetections();
-  const { data: nodes = [], activateBlackout, deactivateBlackout } = useNodes();
-  const { selectedDetection, setSelectedDetection } = useStore();
-  
+  // WebSocket connection for real-time updates
+  useWebSocket();
+
+  // Fetch server state via React Query
+  const { data: detections = [], isLoading: detectionsLoading } = useDetections();
+  const { data: nodes = [], isLoading: nodesLoading, activateBlackout, deactivateBlackout } = useNodes();
+
+  // UI state from Zustand
+  const { selectedDetection, setSelectedDetection, isConnected } = useStore();
+
   const highConfidenceDetections = detections.filter(
     (d) => d.detections.some((obj) => obj.confidence > 0.85)
   );
-  
+
+  if (detectionsLoading || nodesLoading) {
+    return <div className="flex items-center justify-center min-h-screen">Loading...</div>;
+  }
+
   return (
     <div className="min-h-screen bg-tactical-bg text-tactical-text">
       {/* Header */}
@@ -772,7 +742,7 @@ function DashboardContent() {
               nodes={nodes}
               onBlackoutToggle={(nodeId) => {
                 const node = nodes.find((n) => n.node_id === nodeId);
-                if (node?.status === 'blackout') {
+                if (node?.status === 'covert') {  // Backend uses 'covert' status
                   deactivateBlackout(nodeId);
                 } else {
                   activateBlackout(nodeId);
@@ -802,6 +772,48 @@ export default function App() {
     </QueryClientProvider>
   );
 }
+```
+
+---
+
+## Important Setup Notes
+
+### Leaflet CSS Import
+
+**CRITICAL:** Leaflet requires its CSS to be imported in your main entry point:
+
+```typescript
+// src/main.tsx
+import React from 'react';
+import ReactDOM from 'react-dom/client';
+import App from './App.tsx';
+import './index.css';
+import 'leaflet/dist/leaflet.css';  // REQUIRED for Leaflet map styling
+
+ReactDOM.createRoot(document.getElementById('root')!).render(
+  <React.StrictMode>
+    <App />
+  </React.StrictMode>,
+);
+```
+
+### Leaflet Marker Icons Fix (Vite)
+
+Leaflet has a known issue with marker icons in Vite. Add this to your TacticalMap component:
+
+```typescript
+import L from 'leaflet';
+import markerIcon from 'leaflet/dist/images/marker-icon.png';
+import markerIcon2x from 'leaflet/dist/images/marker-icon-2x.png';
+import markerShadow from 'leaflet/dist/images/marker-shadow.png';
+
+// Fix default marker icon paths for Vite
+delete (L.Icon.Default.prototype as any)._getIconUrl;
+L.Icon.Default.mergeOptions({
+  iconUrl: markerIcon,
+  iconRetinaUrl: markerIcon2x,
+  shadowUrl: markerShadow,
+});
 ```
 
 ---
@@ -974,6 +986,58 @@ test.describe('Operator Workflow', () => {
 VITE_API_URL=http://localhost:8001
 VITE_WS_URL=ws://localhost:8001/ws
 ```
+
+---
+
+## Specification Updates (Backend Integration)
+
+**Last Updated:** 2025-11-14
+
+This specification has been updated to align with the actual backend implementation (Modules 1-3). Key changes:
+
+### 1. **Node Status Terminology**
+- **Changed:** `status: 'online' | 'offline' | 'blackout'`
+- **To:** `status: 'online' | 'offline' | 'covert'`
+- **Reason:** Backend uses "covert" for blackout mode operations
+
+### 2. **WebSocket Connection**
+- **Added:** `client_id` query parameter required by backend
+- **Change:** `ws://localhost:8001/ws?client_id={uuid}`
+- **Reason:** Backend validates client_id and closes connection without it
+
+### 3. **Blackout API Endpoints**
+- **Changed:** `POST /api/nodes/{nodeId}/blackout/activate`
+- **To:** `POST /api/blackout/activate` with `{ node_id: string }` body
+- **Changed:** `POST /api/nodes/{nodeId}/blackout/deactivate`
+- **To:** `POST /api/blackout/deactivate` with `{ node_id: string }` body
+- **Reason:** Backend implements global blackout endpoints, not node-specific routes
+
+### 4. **State Management Architecture**
+- **Changed:** Zustand stores detections and nodes
+- **To:** React Query is source of truth for server state
+- **Reason:** Reduces duplication, leverages React Query caching
+- **Note:** Zustand now only manages UI state (selected detection, connection status)
+
+### 5. **React Query v5 Compatibility**
+- **Removed:** `onSuccess` callback (deprecated in v5)
+- **Changed:** Direct data access via hook return values
+- **Updated:** `invalidateQueries` syntax to use object form
+
+### 6. **WebSocket Message Handling**
+- **Changed:** Direct state updates via `addDetection()`, `updateNode()`
+- **To:** Cache invalidation: `queryClient.invalidateQueries()`
+- **Reason:** Maintains single source of truth, prevents stale data
+
+### 7. **Leaflet Integration Notes**
+- **Added:** CSS import requirement in main.tsx
+- **Added:** Marker icon fix for Vite bundler
+- **Reason:** Common Leaflet + Vite pitfalls
+
+### Backend API Contract Verified ✅
+All TypeScript types now match actual backend schemas:
+- `DetectionResponse` includes full detection objects (not just counts)
+- `node_id` is string type (not integer) throughout
+- WebSocket message format: `{ type: string, data: object }`
 
 ---
 
