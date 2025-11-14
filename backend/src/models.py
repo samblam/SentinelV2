@@ -19,7 +19,7 @@ class Node(Base):
     node_id = Column(String, unique=True, index=True, nullable=False)
     status = Column(String, nullable=False, index=True)  # online, offline, covert
     last_heartbeat = Column(DateTime, nullable=True, index=True)
-    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
+    created_at = Column(DateTime, default=datetime.utcnow)
 
     # Relationships
     detections = relationship("Detection", back_populates="node", cascade="all, delete-orphan")
@@ -42,7 +42,7 @@ class Detection(Base):
     detection_count = Column(Integer, nullable=False)
     inference_time_ms = Column(Float, nullable=True)
     model = Column(String, nullable=True)
-    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc), index=True)
+    created_at = Column(DateTime, default=datetime.utcnow, index=True)
 
     # Relationships
     node = relationship("Node", back_populates="detections")
@@ -58,7 +58,7 @@ class QueueItem(Base):
     status = Column(String, nullable=False, index=True)  # pending, processing, completed, failed
     retry_count = Column(Integer, default=0, nullable=False)
     next_attempt_at = Column(DateTime, nullable=True, index=True)  # When to retry this item
-    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc), index=True)
+    created_at = Column(DateTime, default=datetime.utcnow, index=True)
     processed_at = Column(DateTime, nullable=True)
 
     # Relationships

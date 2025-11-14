@@ -100,7 +100,7 @@ async def register_node(
         node = Node(
             node_id=node_data.node_id,
             status="online",
-            last_heartbeat=datetime.now(timezone.utc)
+            last_heartbeat=datetime.utcnow()
         )
         session.add(node)
         await session.commit()
@@ -131,7 +131,7 @@ async def node_heartbeat(
         if not node:
             raise HTTPException(status_code=404, detail="Node not found")
 
-        node.last_heartbeat = datetime.now(timezone.utc)
+        node.last_heartbeat = datetime.utcnow()
         await session.commit()
 
         logger.debug(f"Heartbeat updated for node {node_id}")
@@ -376,7 +376,7 @@ async def activate_blackout(
         # Create blackout event
         blackout_event = BlackoutEvent(
             node_id=node.id,
-            activated_at=datetime.now(timezone.utc),
+            activated_at=datetime.utcnow(),
             reason=blackout_data.reason,
         )
         session.add(blackout_event)
@@ -474,7 +474,7 @@ async def deactivate_blackout(
 
         # Close blackout event
         if blackout_event:
-            blackout_event.deactivated_at = datetime.now(timezone.utc)
+            blackout_event.deactivated_at = datetime.utcnow()
             blackout_event.detections_queued = detections_transmitted
 
         await session.commit()
