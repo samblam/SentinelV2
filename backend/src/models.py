@@ -18,8 +18,8 @@ class Node(Base):
     id = Column(Integer, primary_key=True, index=True)
     node_id = Column(String, unique=True, index=True, nullable=False)
     status = Column(String, nullable=False, index=True)  # online, offline, covert
-    last_heartbeat = Column(DateTime, nullable=True, index=True)
-    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
+    last_heartbeat = Column(DateTime(timezone=True), nullable=True, index=True)
+    created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
 
     # Relationships
     detections = relationship("Detection", back_populates="node", cascade="all, delete-orphan")
@@ -33,7 +33,7 @@ class Detection(Base):
 
     id = Column(Integer, primary_key=True, index=True)
     node_id = Column(Integer, ForeignKey("nodes.id", ondelete="CASCADE"), nullable=False, index=True)
-    timestamp = Column(DateTime, nullable=False, index=True)
+    timestamp = Column(DateTime(timezone=True), nullable=False, index=True)
     latitude = Column(Float, nullable=False)
     longitude = Column(Float, nullable=False)
     altitude_m = Column(Float, nullable=True)
@@ -42,7 +42,7 @@ class Detection(Base):
     detection_count = Column(Integer, nullable=False)
     inference_time_ms = Column(Float, nullable=True)
     model = Column(String, nullable=True)
-    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc), index=True)
+    created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc), index=True)
 
     # Relationships
     node = relationship("Node", back_populates="detections")
@@ -57,9 +57,9 @@ class QueueItem(Base):
     payload = Column(JSONType, nullable=False)  # JSONB for PostgreSQL, JSON for SQLite
     status = Column(String, nullable=False, index=True)  # pending, processing, completed, failed
     retry_count = Column(Integer, default=0, nullable=False)
-    next_attempt_at = Column(DateTime, nullable=True, index=True)  # When to retry this item
-    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc), index=True)
-    processed_at = Column(DateTime, nullable=True)
+    next_attempt_at = Column(DateTime(timezone=True), nullable=True, index=True)  # When to retry this item
+    created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc), index=True)
+    processed_at = Column(DateTime(timezone=True), nullable=True)
 
     # Relationships
     node = relationship("Node", back_populates="queue_items")
@@ -71,8 +71,8 @@ class BlackoutEvent(Base):
 
     id = Column(Integer, primary_key=True, index=True)
     node_id = Column(Integer, ForeignKey("nodes.id", ondelete="CASCADE"), nullable=False)
-    activated_at = Column(DateTime, nullable=False)
-    deactivated_at = Column(DateTime, nullable=True)
+    activated_at = Column(DateTime(timezone=True), nullable=False)
+    deactivated_at = Column(DateTime(timezone=True), nullable=True)
     activated_by = Column(String, nullable=True)  # operator ID
     reason = Column(Text, nullable=True)
     detections_queued = Column(Integer, default=0)
