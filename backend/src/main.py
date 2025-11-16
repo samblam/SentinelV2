@@ -23,6 +23,7 @@ from src.schemas import (
 )
 from src.websocket import ConnectionManager
 from src.queue import QueueManager
+from src.blackout import BlackoutCoordinator
 
 # Import CoT integration (Module 3)
 import sys
@@ -423,165 +424,182 @@ async def get_detections(
         raise HTTPException(status_code=500, detail="Failed to get detections") from e
 
 
-# Blackout activation endpoint
-@app.post("/api/blackout/activate")
-async def activate_blackout(
-    blackout_data: BlackoutActivate,
+# Blackout Mode Endpoints (Module 5)
+
+@app.post("/api/nodes/{node_id}/blackout/activate")
+async def activate_node_blackout(
+    node_id: str,
+    blackout_data: Optional[BlackoutActivate] = None,
     session: AsyncSession = Depends(get_db)
 ):
-    """Activate blackout mode for a node."""
+    """Activate blackout mode for a node"""
+    coordinator = BlackoutCoordinator(session)
+
     try:
-        # Get node
-        result = await session.execute(
-            select(Node).where(Node.node_id == blackout_data.node_id)
-        )
-        node = result.scalar_one_or_none()
+        operator_id = blackout_data.operator_id if blackout_data else None
+        reason = blackout_data.reason if blackout_data else None
 
-        if not node:
-            raise HTTPException(status_code=404, detail="Node not found")
+        event = await coordinator.activate_blackout(node_id, operator_id, reason)
 
-        # Check if already in blackout
-        if node.status == "covert":
-            logger.warning(f"Node {node.node_id} already in blackout mode")
-            return {"status": "already_active", "node_id": node.node_id}
-
-        # Update node status
-        node.status = "covert"
-
-        # Create blackout event
-        blackout_event = BlackoutEvent(
-            node_id=node.id,
-            activated_at=datetime.now(timezone.utc),
-            reason=blackout_data.reason,
-        )
-        session.add(blackout_event)
-        await session.commit()
-
-        logger.info(f"Activated blackout mode for node {node.node_id}")
-
-        # Broadcast to WebSocket clients
+        # Broadcast to dashboard
         asyncio.create_task(
             manager.broadcast({
-                "type": "node_status",
-                "data": {
-                    "id": node.id,
-                    "node_id": node.node_id,
-                    "status": node.status,
-                    "last_heartbeat": node.last_heartbeat.isoformat() if node.last_heartbeat else None
-                }
+                "type": "blackout_event",
+                "action": "activated",
+                "node_id": node_id,
+                "blackout_id": event.id
             })
         )
 
-        return {
-            "status": "blackout_activated",
-            "node_id": node.node_id,
-            "timestamp": blackout_event.activated_at.isoformat()
-        }
+        logger.info(f"Activated blackout mode for node {node_id}")
 
-    except HTTPException:
-        raise
+        return {
+            "status": "activated",
+            "blackout_id": event.id,
+            "node_id": node_id
+        }
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
     except Exception as e:
         logger.error(f"Error activating blackout: {e}")
-        await session.rollback()
         raise HTTPException(status_code=500, detail="Failed to activate blackout") from e
 
 
-# Blackout deactivation endpoint
-@app.post("/api/blackout/deactivate")
-async def deactivate_blackout(
-    blackout_data: BlackoutDeactivate,
+@app.post("/api/nodes/{node_id}/blackout/deactivate")
+async def deactivate_node_blackout(
+    node_id: str,
     session: AsyncSession = Depends(get_db),
     queue_mgr: QueueManager = Depends(get_queue_manager)
 ):
-    """Deactivate blackout mode and transmit queued detections."""
+    """Deactivate blackout mode and trigger burst transmission"""
+    coordinator = BlackoutCoordinator(session)
+
     try:
-        # Get node
+        summary = await coordinator.deactivate_blackout(node_id)
+
+        # Process queued detections (with row-level locking for concurrency)
         result = await session.execute(
-            select(Node).where(Node.node_id == blackout_data.node_id)
+            select(Node).where(Node.node_id == node_id)
         )
         node = result.scalar_one_or_none()
 
-        if not node:
-            raise HTTPException(status_code=404, detail="Node not found")
+        if node:
+            queued_items = await queue_mgr.get_pending_items(node.id, for_update=True)
+            detections_transmitted = 0
 
-        # Check if in blackout
-        if node.status != "covert":
-            logger.warning(f"Node {node.node_id} not in blackout mode")
-            return {"status": "not_active", "node_id": node.node_id}
+            for item in queued_items:
+                try:
+                    payload = item["payload"]
+                    detection = Detection(
+                        node_id=node.id,
+                        timestamp=datetime.fromisoformat(payload["timestamp"]),
+                        latitude=payload["latitude"],
+                        longitude=payload["longitude"],
+                        altitude_m=payload.get("altitude_m"),
+                        accuracy_m=payload.get("accuracy_m"),
+                        detections_json=payload["detections_json"],
+                        detection_count=payload["detection_count"],
+                        inference_time_ms=payload.get("inference_time_ms"),
+                        model=payload.get("model"),
+                    )
+                    session.add(detection)
+                    await queue_mgr.mark_completed(item["id"])
+                    detections_transmitted += 1
+                except Exception as e:
+                    logger.error(f"Error processing queued detection {item['id']}: {e}")
+                    await queue_mgr.mark_failed(item["id"])
 
-        # Get active blackout event
-        result = await session.execute(
-            select(BlackoutEvent)
-            .where(BlackoutEvent.node_id == node.id)
-            .where(BlackoutEvent.deactivated_at.is_(None))
-            .order_by(desc(BlackoutEvent.activated_at))
-        )
-        blackout_event = result.scalar_one_or_none()
+            await session.commit()
 
-        # Process queued detections (with row-level locking for concurrency)
-        queued_items = await queue_mgr.get_pending_items(node.id, for_update=True)
-        detections_transmitted = 0
+            # Complete resumption
+            await coordinator.complete_resumption(node_id, detections_transmitted)
 
-        for item in queued_items:
-            try:
-                payload = item["payload"]
-                detection = Detection(
-                    node_id=payload["node_id"],
-                    timestamp=datetime.fromisoformat(payload["timestamp"]),
-                    latitude=payload["latitude"],
-                    longitude=payload["longitude"],
-                    altitude_m=payload.get("altitude_m"),
-                    accuracy_m=payload.get("accuracy_m"),
-                    detections_json=payload["detections_json"],
-                    detection_count=payload["detection_count"],
-                    inference_time_ms=payload.get("inference_time_ms"),
-                    model=payload.get("model"),
-                )
-                session.add(detection)
-                await queue_mgr.mark_completed(item["id"])
-                detections_transmitted += 1
-            except Exception as e:
-                logger.error(f"Error processing queued detection {item['id']}: {e}")
-                await queue_mgr.mark_failed(item["id"])
+            logger.info(f"Deactivated blackout for node {node_id}, transmitted {detections_transmitted} detections")
 
-        # Update node status
-        node.status = "online"
-
-        # Close blackout event
-        if blackout_event:
-            blackout_event.deactivated_at = datetime.now(timezone.utc)
-            blackout_event.detections_queued = detections_transmitted
-
-        await session.commit()
-
-        logger.info(f"Deactivated blackout for node {node.node_id}, transmitted {detections_transmitted} detections")
-
-        # Broadcast to WebSocket clients
+        # Broadcast to dashboard
         asyncio.create_task(
             manager.broadcast({
-                "type": "node_status",
-                "data": {
-                    "id": node.id,
-                    "node_id": node.node_id,
-                    "status": node.status,
-                    "last_heartbeat": node.last_heartbeat.isoformat() if node.last_heartbeat else None
-                }
+                "type": "blackout_event",
+                "action": "deactivated",
+                "node_id": node_id,
+                "summary": summary
             })
         )
 
-        return {
-            "status": "blackout_deactivated",
-            "node_id": node.node_id,
-            "detections_transmitted": detections_transmitted,
-            "timestamp": datetime.now(timezone.utc).isoformat()
-        }
-
-    except HTTPException:
-        raise
+        return summary
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
     except Exception as e:
         logger.error(f"Error deactivating blackout: {e}")
         await session.rollback()
         raise HTTPException(status_code=500, detail="Failed to deactivate blackout") from e
+
+
+@app.get("/api/nodes/{node_id}/blackout/status")
+async def get_node_blackout_status(
+    node_id: str,
+    session: AsyncSession = Depends(get_db)
+):
+    """Get blackout status for a node"""
+    coordinator = BlackoutCoordinator(session)
+    status = await coordinator.get_blackout_status(node_id)
+    return status
+
+
+@app.get("/api/blackout/events")
+async def get_blackout_events(
+    node_id: Optional[str] = None,
+    limit: int = Query(default=100, le=1000),
+    session: AsyncSession = Depends(get_db)
+):
+    """Query blackout event history"""
+    query = select(BlackoutEvent).order_by(desc(BlackoutEvent.activated_at)).limit(limit)
+
+    if node_id:
+        result = await session.execute(
+            select(Node).where(Node.node_id == node_id)
+        )
+        node = result.scalar_one_or_none()
+        if node:
+            query = query.where(BlackoutEvent.node_id == node.id)
+
+    result = await session.execute(query)
+    events = result.scalars().all()
+
+    return [
+        {
+            "id": event.id,
+            "node_id": event.node.node_id,
+            "activated_at": event.activated_at.isoformat(),
+            "deactivated_at": event.deactivated_at.isoformat() if event.deactivated_at else None,
+            "duration_seconds": event.duration_seconds,
+            "detections_queued": event.detections_queued,
+            "detections_transmitted": event.detections_transmitted,
+            "activated_by": event.activated_by,
+            "reason": event.reason
+        }
+        for event in events
+    ]
+
+
+# Legacy endpoints for backward compatibility
+@app.post("/api/blackout/activate")
+async def activate_blackout_legacy(
+    blackout_data: BlackoutActivate,
+    session: AsyncSession = Depends(get_db)
+):
+    """Legacy blackout activation endpoint (redirects to node-specific endpoint)"""
+    return await activate_node_blackout(blackout_data.node_id, blackout_data, session)
+
+
+@app.post("/api/blackout/deactivate")
+async def deactivate_blackout_legacy(
+    blackout_data: BlackoutDeactivate,
+    session: AsyncSession = Depends(get_db),
+    queue_mgr: QueueManager = Depends(get_queue_manager)
+):
+    """Legacy blackout deactivation endpoint (redirects to node-specific endpoint)"""
+    return await deactivate_node_blackout(blackout_data.node_id, session, queue_mgr)
 
 
 # Helper functions for CoT integration

@@ -71,11 +71,19 @@ class BlackoutEvent(Base):
 
     id = Column(Integer, primary_key=True, index=True)
     node_id = Column(Integer, ForeignKey("nodes.id", ondelete="CASCADE"), nullable=False)
+
+    # Timing
     activated_at = Column(DateTime(timezone=True), nullable=False)
     deactivated_at = Column(DateTime(timezone=True), nullable=True)
+    duration_seconds = Column(Integer, nullable=True)  # Calculated on deactivation
+
+    # Context
     activated_by = Column(String, nullable=True)  # operator ID
     reason = Column(Text, nullable=True)
+
+    # Metrics
     detections_queued = Column(Integer, default=0)
+    detections_transmitted = Column(Integer, default=0)
 
     # Relationships
     node = relationship("Node", back_populates="blackout_events")
