@@ -12,6 +12,7 @@ from .inference import InferenceEngine, ImageLoadError, ModelInferenceError
 from .telemetry import TelemetryGenerator
 from .blackout import BlackoutController
 from .config import Settings
+from .burst_transmission import complete_blackout_deactivation
 
 # Initialize FastAPI app
 app = FastAPI(
@@ -27,7 +28,7 @@ telemetry = TelemetryGenerator(
     base_lat=settings.DEFAULT_LAT,
     base_lon=settings.DEFAULT_LON
 )
-blackout = BlackoutController()
+blackout = BlackoutController(node_id=settings.NODE_ID)
 
 
 def get_inference_engine():
@@ -180,5 +181,47 @@ async def blackout_status():
     return {
         "active": blackout.is_active,
         "activated_at": blackout.activated_at.isoformat() if blackout.activated_at else None,
-        "queued_count": len(await blackout.get_queued_detections())
+        "queued_count": await blackout.get_queued_count()
     }
+
+
+@app.post("/blackout/deactivate-complete")
+async def deactivate_complete(blackout_id: Optional[int] = None):
+    """
+    Complete blackout deactivation workflow with burst transmission.
+
+    This endpoint:
+    1. Deactivates blackout mode
+    2. Retrieves all queued detections
+    3. Transmits them to backend in batches
+    4. Marks detections as transmitted
+    5. Clears transmitted detections from queue
+    6. Notifies backend of completion
+
+    Args:
+        blackout_id: Optional backend blackout event ID
+
+    Returns:
+        Summary of deactivation and transmission
+    """
+    if not blackout.is_active:
+        return {
+            "status": "not_active",
+            "message": "Node is not in blackout mode"
+        }
+
+    try:
+        result = await complete_blackout_deactivation(
+            blackout_controller=blackout,
+            backend_url=settings.BACKEND_URL,
+            node_id=settings.NODE_ID,
+            blackout_id=blackout_id
+        )
+
+        return result
+
+    except Exception as e:
+        raise HTTPException(
+            status_code=500,
+            detail=f"Burst transmission failed: {str(e)}"
+        )

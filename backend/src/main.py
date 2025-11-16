@@ -546,6 +546,49 @@ async def get_node_blackout_status(
     return status
 
 
+@app.post("/api/nodes/{node_id}/blackout/complete")
+async def complete_node_blackout_resumption(
+    node_id: str,
+    completion_data: dict,
+    session: AsyncSession = Depends(get_db)
+):
+    """
+    Complete blackout resumption after edge burst transmission.
+
+    Called by edge node after it successfully transmits queued detections.
+
+    Args:
+        node_id: Edge node identifier
+        completion_data: Dict with blackout_id and transmitted_count
+    """
+    coordinator = BlackoutCoordinator(session)
+
+    try:
+        transmitted_count = completion_data.get("transmitted_count", 0)
+        await coordinator.complete_resumption(node_id, transmitted_count)
+
+        logger.info(f"Completed blackout resumption for node {node_id}, {transmitted_count} detections transmitted")
+
+        # Broadcast to dashboard
+        asyncio.create_task(
+            manager.broadcast({
+                "type": "blackout_event",
+                "action": "completed",
+                "node_id": node_id,
+                "transmitted_count": transmitted_count
+            })
+        )
+
+        return {
+            "status": "completed",
+            "node_id": node_id,
+            "transmitted_count": transmitted_count
+        }
+    except Exception as e:
+        logger.error(f"Error completing blackout resumption: {e}")
+        raise HTTPException(status_code=500, detail="Failed to complete resumption") from e
+
+
 @app.get("/api/blackout/events")
 async def get_blackout_events(
     node_id: Optional[str] = None,
