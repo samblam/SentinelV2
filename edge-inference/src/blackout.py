@@ -11,17 +11,20 @@ from pathlib import Path
 
 
 class BlackoutController:
-    """Manage blackout mode for covert operations"""
+    """Manage blackout mode for covert operations (Module 5 enhanced)"""
 
-    def __init__(self, db_path: str = "blackout_queue.db"):
+    def __init__(self, node_id: str, db_path: str = "blackout_queue.db"):
         """
         Initialize blackout controller
 
         Args:
+            node_id: Edge node identifier
             db_path: Path to SQLite database for queue persistence
         """
+        self.node_id = node_id
         self.db_path = Path(db_path)
         self.is_active = False
+        self.blackout_id: Optional[int] = None
         self.activated_at: Optional[datetime] = None
         self._initialized = False
 
@@ -35,34 +38,48 @@ class BlackoutController:
                 CREATE TABLE IF NOT EXISTS queued_detections (
                     id INTEGER PRIMARY KEY AUTOINCREMENT,
                     queued_at TEXT NOT NULL,
-                    detection_data TEXT NOT NULL
+                    detection_data TEXT NOT NULL,
+                    transmitted BOOLEAN DEFAULT 0
                 )
             """)
             await db.commit()
 
         self._initialized = True
 
-    async def activate(self):
-        """Activate blackout mode"""
+    async def activate(self, blackout_id: Optional[int] = None):
+        """
+        Activate blackout mode
+
+        Args:
+            blackout_id: Backend blackout event ID
+        """
         await self._init_db()
         self.is_active = True
+        self.blackout_id = blackout_id
         self.activated_at = datetime.now(timezone.utc)
+
+        print(f"[BLACKOUT] Node {self.node_id} entering blackout mode")
+        print(f"[BLACKOUT] Blackout ID: {blackout_id}")
+        print(f"[BLACKOUT] Detections will be queued locally")
+        print(f"[BLACKOUT] RF signature suppressed")
 
     async def deactivate(self) -> List[Dict[str, Any]]:
         """
-        Deactivate blackout mode and return queued detections
+        Deactivate blackout mode and return queued detections for burst transmission
 
         Returns:
             List of all queued detections
         """
+        if not self.is_active:
+            return []
+
         detections = await self.get_queued_detections()
 
-        # Clear queue
-        async with aiosqlite.connect(self.db_path) as db:
-            await db.execute("DELETE FROM queued_detections")
-            await db.commit()
+        print(f"[BLACKOUT] Node {self.node_id} exiting blackout mode")
+        print(f"[BLACKOUT] Transmitting {len(detections)} queued detections")
 
         self.is_active = False
+        self.blackout_id = None
         self.activated_at = None
 
         return detections
@@ -81,27 +98,87 @@ class BlackoutController:
 
         async with aiosqlite.connect(self.db_path) as db:
             await db.execute(
-                "INSERT INTO queued_detections (queued_at, detection_data) VALUES (?, ?)",
+                "INSERT INTO queued_detections (queued_at, detection_data, transmitted) VALUES (?, ?, 0)",
                 (queued_at, detection_json)
             )
             await db.commit()
 
+        # Periodic status update (every 10 detections)
+        count = await self.get_queued_count()
+        if count % 10 == 0:
+            print(f"[BLACKOUT] {count} detections queued")
+
     async def get_queued_detections(self) -> List[Dict[str, Any]]:
         """
-        Get all queued detections
+        Get all untransmitted queued detections
 
         Returns:
-            List of queued detection messages
+            List of queued detection data with IDs
         """
         await self._init_db()
 
-        detections = []
+        async with aiosqlite.connect(self.db_path) as db:
+            cursor = await db.execute(
+                "SELECT id, queued_at, detection_data FROM queued_detections WHERE transmitted = 0 ORDER BY id"
+            )
+            rows = await cursor.fetchall()
+
+        return [
+            {
+                "id": row[0],
+                "queued_at": row[1],
+                "detection": json.loads(row[2])
+            }
+            for row in rows
+        ]
+
+    async def get_queued_count(self) -> int:
+        """
+        Get count of untransmitted queued detections
+
+        Returns:
+            Number of queued detections
+        """
+        await self._init_db()
 
         async with aiosqlite.connect(self.db_path) as db:
-            async with db.execute(
-                "SELECT detection_data FROM queued_detections ORDER BY id"
-            ) as cursor:
-                async for row in cursor:
-                    detections.append(json.loads(row[0]))
+            cursor = await db.execute(
+                "SELECT COUNT(*) FROM queued_detections WHERE transmitted = 0"
+            )
+            row = await cursor.fetchone()
 
-        return detections
+        return row[0] if row else 0
+
+    async def mark_transmitted(self, detection_ids: List[int]):
+        """
+        Mark detections as transmitted
+
+        Args:
+            detection_ids: List of detection IDs that were successfully transmitted
+        """
+        await self._init_db()
+
+        async with aiosqlite.connect(self.db_path) as db:
+            for det_id in detection_ids:
+                await db.execute(
+                    "UPDATE queued_detections SET transmitted = 1 WHERE id = ?",
+                    (det_id,)
+                )
+            await db.commit()
+
+    async def clear_transmitted(self):
+        """Clear transmitted detections from queue"""
+        await self._init_db()
+
+        async with aiosqlite.connect(self.db_path) as db:
+            await db.execute("DELETE FROM queued_detections WHERE transmitted = 1")
+            await db.commit()
+
+    def get_status(self) -> dict:
+        """Get current blackout status"""
+        return {
+            "active": self.is_active,
+            "blackout_id": self.blackout_id,
+            "activated_at": self.activated_at.isoformat() if self.activated_at else None,
+            "duration_seconds": int((datetime.now(timezone.utc) - self.activated_at).total_seconds()) if self.activated_at else None
+        }
