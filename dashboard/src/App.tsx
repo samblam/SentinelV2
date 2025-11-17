@@ -5,6 +5,7 @@ import { TacticalMap } from '@/components/TacticalMap';
 import { DetectionList } from '@/components/DetectionList';
 import { NodeStatusPanel } from '@/components/NodeStatusPanel';
 import { ConnectionStatus } from '@/components/ConnectionStatus';
+import { AlertPanel } from '@/components/AlertPanel';
 import { useWebSocket } from '@/hooks/useWebSocket';
 import { useDetections } from '@/hooks/useDetections';
 import { useNodes } from '@/hooks/useNodes';
@@ -89,6 +90,9 @@ function DashboardContent() {
           </div>
         </div>
       </div>
+
+      {/* Alert Panel - Floating panel for high-confidence detections */}
+      <AlertPanel detections={detections} confidenceThreshold={0.85} />
     </div>
   );
 }
