@@ -31,9 +31,19 @@ export interface BoundingBox {
 export interface Node {
   id: number;
   node_id: string;
-  status: 'online' | 'offline' | 'covert';  // Backend uses 'covert' not 'blackout'
+  status: 'online' | 'offline' | 'covert' | 'resuming';  // Backend uses 'covert' not 'blackout'
   last_heartbeat?: string;
   created_at: string;
+  // Blackout status (Module 5)
+  blackout_status?: {
+    active: boolean;
+    blackout_id?: number;
+    activated_at?: string;
+    duration_seconds?: number;
+    detections_queued?: number;
+    activated_by?: string;
+    reason?: string;
+  };
 }
 
 export interface BlackoutEvent {

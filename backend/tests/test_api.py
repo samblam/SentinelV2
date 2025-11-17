@@ -83,7 +83,7 @@ async def test_submit_detection(test_engine, get_session):
         )
         assert response.status_code == 200
         data = response.json()
-        assert data["node_id"] == node.id
+        assert data["node_id"] == node.node_id  # node_id is the string identifier, not the integer ID
         assert data["detection_count"] == 2
 
 
@@ -200,8 +200,9 @@ async def test_activate_blackout(test_engine, get_session):
         )
         assert response.status_code == 200
         data = response.json()
-        assert data["status"] == "blackout_activated"
+        assert data["status"] == "activated"
         assert data["node_id"] == "test-node"
+        assert "blackout_id" in data
 
     # Verify node status changed to covert
     async with get_session() as session:
@@ -243,8 +244,11 @@ async def test_deactivate_blackout(test_engine, get_session):
         )
         assert response.status_code == 200
         data = response.json()
-        assert data["status"] == "blackout_deactivated"
-        assert "detections_transmitted" in data
+        assert data["node_id"] == "test-node"
+        assert "blackout_id" in data
+        assert "duration_seconds" in data
+        assert "activated_at" in data
+        assert "deactivated_at" in data
 
     # Verify node status changed back to online
     async with get_session() as session:

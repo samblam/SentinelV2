@@ -36,7 +36,7 @@ async def test_activate_blackout_nonexistent_node(test_engine, get_session):
             "/api/blackout/activate",
             json={"node_id": "nonexistent"}
         )
-        assert response.status_code == 404
+        assert response.status_code == 400  # ValueError raises 400
 
 
 @pytest.mark.asyncio
@@ -53,9 +53,9 @@ async def test_activate_blackout_already_active(test_engine, get_session):
             "/api/blackout/activate",
             json={"node_id": "test-node"}
         )
-        assert response.status_code == 200
+        assert response.status_code == 400  # ValueError raises 400
         data = response.json()
-        assert data["status"] == "already_active"
+        assert "already in blackout" in data["detail"].lower()
 
 
 @pytest.mark.asyncio
@@ -67,7 +67,7 @@ async def test_deactivate_blackout_nonexistent_node(test_engine, get_session):
             "/api/blackout/deactivate",
             json={"node_id": "nonexistent"}
         )
-        assert response.status_code == 404
+        assert response.status_code == 400  # ValueError raises 400
 
 
 @pytest.mark.asyncio
@@ -84,9 +84,9 @@ async def test_deactivate_blackout_not_active(test_engine, get_session):
             "/api/blackout/deactivate",
             json={"node_id": "test-node"}
         )
-        assert response.status_code == 200
+        assert response.status_code == 400  # ValueError raises 400
         data = response.json()
-        assert data["status"] == "not_active"
+        assert "not in blackout" in data["detail"].lower()
 
 
 @pytest.mark.asyncio

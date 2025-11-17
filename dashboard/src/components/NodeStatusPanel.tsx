@@ -3,14 +3,16 @@
 import { Server, Circle } from 'lucide-react';
 import { Node } from '@/lib/types';
 import { cn } from '@/lib/utils';
+import { BlackoutControl } from './BlackoutControl';
 
 interface NodeStatusPanelProps {
   nodes: Node[];
-  onBlackoutToggle?: (nodeId: string) => void;
+  onActivateBlackout?: (nodeId: string, reason?: string) => Promise<void>;
+  onDeactivateBlackout?: (nodeId: string) => Promise<void>;
 }
 
-export function NodeStatusPanel({ nodes, onBlackoutToggle }: NodeStatusPanelProps) {
-  const getStatusColor = (status: 'online' | 'offline' | 'covert') => {
+export function NodeStatusPanel({ nodes, onActivateBlackout, onDeactivateBlackout }: NodeStatusPanelProps) {
+  const getStatusColor = (status: 'online' | 'offline' | 'covert' | 'resuming') => {
     switch (status) {
       case 'online':
         return 'text-status-online';
@@ -18,12 +20,14 @@ export function NodeStatusPanel({ nodes, onBlackoutToggle }: NodeStatusPanelProp
         return 'text-status-offline';
       case 'covert':
         return 'text-status-covert';
+      case 'resuming':
+        return 'text-yellow-500';
       default:
         return 'text-tactical-textMuted';
     }
   };
 
-  const getStatusBgColor = (status: 'online' | 'offline' | 'covert') => {
+  const getStatusBgColor = (status: 'online' | 'offline' | 'covert' | 'resuming') => {
     switch (status) {
       case 'online':
         return 'bg-status-online';
@@ -31,12 +35,14 @@ export function NodeStatusPanel({ nodes, onBlackoutToggle }: NodeStatusPanelProp
         return 'bg-status-offline';
       case 'covert':
         return 'bg-status-covert';
+      case 'resuming':
+        return 'bg-yellow-500';
       default:
         return 'bg-tactical-textMuted';
     }
   };
 
-  const getStatusLabel = (status: 'online' | 'offline' | 'covert') => {
+  const getStatusLabel = (status: 'online' | 'offline' | 'covert' | 'resuming') => {
     switch (status) {
       case 'online':
         return 'ONLINE';
@@ -44,6 +50,8 @@ export function NodeStatusPanel({ nodes, onBlackoutToggle }: NodeStatusPanelProp
         return 'OFFLINE';
       case 'covert':
         return 'COVERT';
+      case 'resuming':
+        return 'RESUMING';
       default:
         return 'UNKNOWN';
     }
@@ -64,8 +72,8 @@ export function NodeStatusPanel({ nodes, onBlackoutToggle }: NodeStatusPanelProp
           key={node.id}
           className="bg-tactical-surface border border-tactical-border rounded-lg p-3"
         >
-          <div className="flex items-start justify-between">
-            <div className="flex items-start gap-3 flex-1">
+          <div className="space-y-3">
+            <div className="flex items-start gap-3">
               <div className="mt-1">
                 <Server className={cn('w-5 h-5', getStatusColor(node.status))} />
               </div>
@@ -91,19 +99,13 @@ export function NodeStatusPanel({ nodes, onBlackoutToggle }: NodeStatusPanelProp
               </div>
             </div>
 
-            {/* Optional: Blackout toggle button for future implementation */}
-            {onBlackoutToggle && (
-              <button
-                onClick={() => onBlackoutToggle(node.node_id)}
-                className={cn(
-                  'px-2 py-1 text-xs rounded border transition-colors',
-                  node.status === 'covert'
-                    ? 'border-status-covert text-status-covert hover:bg-status-covert/10'
-                    : 'border-tactical-border text-tactical-textMuted hover:bg-tactical-bg'
-                )}
-              >
-                {node.status === 'covert' ? 'Resume' : 'Blackout'}
-              </button>
+            {/* Blackout Control (Module 5) */}
+            {onActivateBlackout && onDeactivateBlackout && (
+              <BlackoutControl
+                node={node}
+                onActivate={onActivateBlackout}
+                onDeactivate={onDeactivateBlackout}
+              />
             )}
           </div>
         </div>

@@ -27,4 +27,8 @@ class Settings(BaseSettings):
     DEFAULT_LAT: float = 70.0  # Arctic latitude
     DEFAULT_LON: float = -100.0  # Arctic longitude
 
+    # Node identity and backend connection (Module 5)
+    NODE_ID: str = "edge-node-01"
+    BACKEND_URL: str = "http://localhost:8001"
+
     model_config = SettingsConfigDict(env_file=".env", env_file_encoding="utf-8")

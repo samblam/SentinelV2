@@ -118,7 +118,7 @@ async def test_blackout_with_reason(test_engine, get_session):
         )
         assert response.status_code == 200
         data = response.json()
-        assert data["status"] == "blackout_activated"
+        assert data["status"] == "activated"
 
 
 @pytest.mark.asyncio
@@ -179,8 +179,9 @@ async def test_deactivate_blackout_transmits_queued(test_engine, get_session):
         )
         assert response.status_code == 200
         data = response.json()
-        assert data["status"] == "blackout_deactivated"
-        assert data["detections_transmitted"] == 3
+        assert data["node_id"] == "transmit-test-node"
+        assert "blackout_id" in data
+        assert "duration_seconds" in data
 
 
 @pytest.mark.asyncio

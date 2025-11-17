@@ -70,13 +70,11 @@ function DashboardContent() {
             <h2 className="text-lg font-semibold mb-4">Edge Nodes</h2>
             <NodeStatusPanel
               nodes={nodes}
-              onBlackoutToggle={(nodeId) => {
-                const node = nodes.find((n) => n.node_id === nodeId);
-                if (node?.status === 'covert') {  // Backend uses 'covert' status
-                  deactivateBlackout(nodeId);
-                } else {
-                  activateBlackout(nodeId);
-                }
+              onActivateBlackout={async (nodeId: string, reason?: string) => {
+                activateBlackout(nodeId, reason);
+              }}
+              onDeactivateBlackout={async (nodeId: string) => {
+                deactivateBlackout(nodeId);
               }}
             />
           </div>
