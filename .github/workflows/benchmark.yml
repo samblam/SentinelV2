@@ -1,0 +1,225 @@
+name: Performance Benchmarks
+
+on:
+  # Run on release tags
+  push:
+    tags:
+      - 'v*'
+
+  # Manual trigger
+  workflow_dispatch:
+    inputs:
+      run_backend:
+        description: 'Run backend benchmarks'
+        required: false
+        default: 'true'
+      run_edge:
+        description: 'Run edge inference benchmarks'
+        required: false
+        default: 'true'
+      run_dashboard:
+        description: 'Run dashboard benchmarks'
+        required: false
+        default: 'true'
+
+jobs:
+  backend-benchmark:
+    if: github.event.inputs.run_backend != 'false'
+    runs-on: ubuntu-latest
+
+    services:
+      postgres:
+        image: postgres:15
+        env:
+          POSTGRES_USER: sentinel
+          POSTGRES_PASSWORD: sentinel
+          POSTGRES_DB: sentinel
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install backend dependencies
+        working-directory: backend
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+          pip install aiohttp
+
+      - name: Run database migrations
+        working-directory: backend
+        env:
+          DATABASE_URL: postgresql+asyncpg://sentinel:sentinel@localhost:5432/sentinel
+        run: alembic upgrade head
+
+      - name: Start backend server
+        working-directory: backend
+        env:
+          DATABASE_URL: postgresql+asyncpg://sentinel:sentinel@localhost:5432/sentinel
+        run: |
+          uvicorn src.main:app --host 0.0.0.0 --port 8000 &
+          sleep 5
+
+      - name: Run backend benchmark
+        working-directory: backend
+        run: python3 benchmarks/benchmark_api.py
+
+      - name: Upload benchmark results
+        uses: actions/upload-artifact@v4
+        with:
+          name: backend-benchmark-results
+          path: |
+            backend/benchmarks/results.json
+            backend/benchmarks/PERFORMANCE_REPORT.md
+
+  edge-benchmark:
+    if: github.event.inputs.run_edge != 'false'
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install edge dependencies
+        working-directory: edge-inference
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+          pip install psutil
+
+      - name: Run edge inference benchmark
+        working-directory: edge-inference
+        run: python3 benchmarks/benchmark_inference.py
+
+      - name: Upload benchmark results
+        uses: actions/upload-artifact@v4
+        with:
+          name: edge-benchmark-results
+          path: |
+            edge-inference/benchmarks/results.json
+            edge-inference/benchmarks/PERFORMANCE_REPORT.md
+
+  dashboard-benchmark:
+    if: github.event.inputs.run_dashboard != 'false'
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+
+      - name: Install dashboard dependencies
+        working-directory: dashboard
+        run: npm ci
+
+      - name: Build dashboard
+        working-directory: dashboard
+        run: npm run build
+
+      - name: Start dashboard preview server
+        working-directory: dashboard
+        run: |
+          npx vite preview --port 5173 &
+          sleep 5
+
+      - name: Install Lighthouse
+        run: npm install -g @lhci/cli lighthouse
+
+      - name: Run dashboard benchmark
+        run: bash dashboard/benchmarks/lighthouse.sh
+
+      - name: Upload benchmark results
+        uses: actions/upload-artifact@v4
+        with:
+          name: dashboard-benchmark-results
+          path: |
+            dashboard/benchmarks/results.json
+            dashboard/benchmarks/PERFORMANCE_REPORT.md
+
+  create-benchmark-summary:
+    needs: [backend-benchmark, edge-benchmark, dashboard-benchmark]
+    if: always()
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Download all benchmark results
+        uses: actions/download-artifact@v4
+        with:
+          path: benchmark-results
+
+      - name: Create benchmark summary
+        run: |
+          echo "# Performance Benchmark Results" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Date:** $(date)" >> $GITHUB_STEP_SUMMARY
+          echo "**Commit:** ${{ github.sha }}" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+
+          # Backend results
+          if [ -f benchmark-results/backend-benchmark-results/PERFORMANCE_REPORT.md ]; then
+            echo "## Backend API Benchmark" >> $GITHUB_STEP_SUMMARY
+            cat benchmark-results/backend-benchmark-results/PERFORMANCE_REPORT.md >> $GITHUB_STEP_SUMMARY
+            echo "" >> $GITHUB_STEP_SUMMARY
+          fi
+
+          # Edge results
+          if [ -f benchmark-results/edge-benchmark-results/PERFORMANCE_REPORT.md ]; then
+            echo "## Edge Inference Benchmark" >> $GITHUB_STEP_SUMMARY
+            cat benchmark-results/edge-benchmark-results/PERFORMANCE_REPORT.md >> $GITHUB_STEP_SUMMARY
+            echo "" >> $GITHUB_STEP_SUMMARY
+          fi
+
+          # Dashboard results
+          if [ -f benchmark-results/dashboard-benchmark-results/PERFORMANCE_REPORT.md ]; then
+            echo "## Dashboard Benchmark" >> $GITHUB_STEP_SUMMARY
+            cat benchmark-results/dashboard-benchmark-results/PERFORMANCE_REPORT.md >> $GITHUB_STEP_SUMMARY
+            echo "" >> $GITHUB_STEP_SUMMARY
+          fi
+
+      - name: Comment PR with results (if PR)
+        if: github.event_name == 'pull_request'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs');
+            let comment = '# Performance Benchmark Results\n\n';
+
+            if (fs.existsSync('benchmark-results/backend-benchmark-results/PERFORMANCE_REPORT.md')) {
+              comment += fs.readFileSync('benchmark-results/backend-benchmark-results/PERFORMANCE_REPORT.md', 'utf8');
+            }
+
+            if (fs.existsSync('benchmark-results/edge-benchmark-results/PERFORMANCE_REPORT.md')) {
+              comment += fs.readFileSync('benchmark-results/edge-benchmark-results/PERFORMANCE_REPORT.md', 'utf8');
+            }
+
+            if (fs.existsSync('benchmark-results/dashboard-benchmark-results/PERFORMANCE_REPORT.md')) {
+              comment += fs.readFileSync('benchmark-results/dashboard-benchmark-results/PERFORMANCE_REPORT.md', 'utf8');
+            }
+
+            github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: comment
+            });
