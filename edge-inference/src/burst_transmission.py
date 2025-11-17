@@ -4,8 +4,11 @@ Transmits queued detections to backend when exiting blackout
 """
 import asyncio
 import aiohttp
+import logging
 from typing import List, Dict, Any, Optional
 from datetime import datetime
+
+logger = logging.getLogger(__name__)
 
 
 class BurstTransmissionError(Exception):
@@ -18,10 +21,12 @@ async def transmit_queued_detections(
     backend_url: str,
     node_id: str,
     batch_size: int = 10,
-    timeout: int = 30
+    timeout: int = 30,
+    max_retries: int = 3,
+    retry_backoff_base: float = 2.0
 ) -> Dict[str, Any]:
     """
-    Transmit queued detections to backend in batches.
+    Transmit queued detections to backend in batches with retry logic.
 
     Args:
         queued_detections: List of queued detection objects with 'id' and 'detection' keys
@@ -29,6 +34,8 @@ async def transmit_queued_detections(
         node_id: Edge node identifier
         batch_size: Number of detections to send per batch
         timeout: Request timeout in seconds
+        max_retries: Maximum number of retry attempts per detection (default: 3)
+        retry_backoff_base: Base for exponential backoff calculation (default: 2.0)
 
     Returns:
         Transmission summary with success/failure counts
@@ -49,9 +56,9 @@ async def transmit_queued_detections(
     transmitted_ids = []
     failed_ids = []
 
-    print(f"[BURST] Starting transmission of {total} queued detections")
-    print(f"[BURST] Backend: {backend_url}")
-    print(f"[BURST] Batch size: {batch_size}")
+    logger.info(f"[BURST] Starting transmission of {total} queued detections")
+    logger.info(f"[BURST] Backend: {backend_url}")
+    logger.info(f"[BURST] Batch size: {batch_size}")
 
     async with aiohttp.ClientSession() as session:
         # Process in batches to avoid overwhelming backend
@@ -60,37 +67,59 @@ async def transmit_queued_detections(
             batch_num = (i // batch_size) + 1
             total_batches = (total + batch_size - 1) // batch_size
 
-            print(f"[BURST] Processing batch {batch_num}/{total_batches} ({len(batch)} detections)")
+            logger.info(f"[BURST] Processing batch {batch_num}/{total_batches} ({len(batch)} detections)")
 
             for item in batch:
                 detection_id = item['id']
                 detection_data = item['detection']
 
-                try:
-                    # POST detection to backend
-                    async with session.post(
-                        f"{backend_url}/api/detections",
-                        json=detection_data,
-                        timeout=aiohttp.ClientTimeout(total=timeout)
-                    ) as response:
-                        if response.status in [200, 201]:
-                            transmitted_ids.append(detection_id)
+                # Retry logic with exponential backoff
+                success = False
+                for attempt in range(max_retries):
+                    try:
+                        # POST detection to backend
+                        async with session.post(
+                            f"{backend_url}/api/detections",
+                            json=detection_data,
+                            timeout=aiohttp.ClientTimeout(total=timeout)
+                        ) as response:
+                            if response.status in [200, 201]:
+                                transmitted_ids.append(detection_id)
+                                success = True
+                                break
+                            else:
+                                error_text = await response.text()
+                                if attempt < max_retries - 1:
+                                    backoff_time = retry_backoff_base ** attempt
+                                    logger.warning(f"[BURST] Failed to transmit detection {detection_id}: HTTP {response.status}, retrying in {backoff_time}s (attempt {attempt + 1}/{max_retries})")
+                                    await asyncio.sleep(backoff_time)
+                                else:
+                                    logger.error(f"[BURST] Failed to transmit detection {detection_id} after {max_retries} attempts: HTTP {response.status}")
+                                    logger.error(f"[BURST] Error: {error_text}")
+
+                    except asyncio.TimeoutError:
+                        if attempt < max_retries - 1:
+                            backoff_time = retry_backoff_base ** attempt
+                            logger.warning(f"[BURST] Timeout transmitting detection {detection_id}, retrying in {backoff_time}s (attempt {attempt + 1}/{max_retries})")
+                            await asyncio.sleep(backoff_time)
                         else:
-                            error_text = await response.text()
-                            print(f"[BURST] Failed to transmit detection {detection_id}: HTTP {response.status}")
-                            print(f"[BURST] Error: {error_text}")
-                            failed_ids.append(detection_id)
+                            logger.error(f"[BURST] Timeout transmitting detection {detection_id} after {max_retries} attempts")
 
-                except asyncio.TimeoutError:
-                    print(f"[BURST] Timeout transmitting detection {detection_id}")
-                    failed_ids.append(detection_id)
+                    except aiohttp.ClientError as e:
+                        if attempt < max_retries - 1:
+                            backoff_time = retry_backoff_base ** attempt
+                            logger.warning(f"[BURST] Network error transmitting detection {detection_id}: {e}, retrying in {backoff_time}s (attempt {attempt + 1}/{max_retries})")
+                            await asyncio.sleep(backoff_time)
+                        else:
+                            logger.error(f"[BURST] Network error transmitting detection {detection_id} after {max_retries} attempts: {e}")
 
-                except aiohttp.ClientError as e:
-                    print(f"[BURST] Network error transmitting detection {detection_id}: {e}")
-                    failed_ids.append(detection_id)
+                    except Exception as e:
+                        # Unexpected errors shouldn't be retried
+                        logger.error(f"[BURST] Unexpected error transmitting detection {detection_id}: {e}")
+                        break
 
-                except Exception as e:
-                    print(f"[BURST] Unexpected error transmitting detection {detection_id}: {e}")
+                # If all retries failed, add to failed_ids
+                if not success:
                     failed_ids.append(detection_id)
 
             # Small delay between batches to avoid overwhelming backend
@@ -100,14 +129,14 @@ async def transmit_queued_detections(
     transmitted_count = len(transmitted_ids)
     failed_count = len(failed_ids)
 
-    print(f"[BURST] Transmission complete:")
-    print(f"[BURST]   Total: {total}")
-    print(f"[BURST]   Transmitted: {transmitted_count}")
-    print(f"[BURST]   Failed: {failed_count}")
+    logger.info(f"[BURST] Transmission complete:")
+    logger.info(f"[BURST]   Total: {total}")
+    logger.info(f"[BURST]   Transmitted: {transmitted_count}")
+    logger.info(f"[BURST]   Failed: {failed_count}")
 
     if failed_count > 0:
-        print(f"[BURST] WARNING: {failed_count} detections failed to transmit")
-        print(f"[BURST] Failed IDs: {failed_ids}")
+        logger.warning(f"[BURST] WARNING: {failed_count} detections failed to transmit")
+        logger.warning(f"[BURST] Failed IDs: {failed_ids}")
 
     return {
         "status": "success" if failed_count == 0 else "partial",
@@ -142,19 +171,19 @@ async def complete_blackout_deactivation(
     Returns:
         Summary of deactivation and transmission
     """
-    print(f"[BLACKOUT] Starting deactivation workflow for node {node_id}")
+    logger.info(f"[BLACKOUT] Starting deactivation workflow for node {node_id}")
 
     # Get queued detections before deactivating
     queued = await blackout_controller.get_queued_detections()
     queued_count = len(queued)
 
-    print(f"[BLACKOUT] Found {queued_count} queued detections")
+    logger.info(f"[BLACKOUT] Found {queued_count} queued detections")
 
     # Deactivate blackout mode
     await blackout_controller.deactivate()
 
     if queued_count == 0:
-        print(f"[BLACKOUT] No detections to transmit")
+        logger.info(f"[BLACKOUT] No detections to transmit")
         return {
             "status": "completed",
             "queued_count": 0,
@@ -172,11 +201,11 @@ async def complete_blackout_deactivation(
     # Mark transmitted detections
     if transmission_result['transmitted_ids']:
         await blackout_controller.mark_transmitted(transmission_result['transmitted_ids'])
-        print(f"[BLACKOUT] Marked {len(transmission_result['transmitted_ids'])} detections as transmitted")
+        logger.info(f"[BLACKOUT] Marked {len(transmission_result['transmitted_ids'])} detections as transmitted")
 
     # Clear transmitted detections from queue
     await blackout_controller.clear_transmitted()
-    print(f"[BLACKOUT] Cleared transmitted detections from queue")
+    logger.info(f"[BLACKOUT] Cleared transmitted detections from queue")
 
     # Notify backend of completion if blackout_id provided
     if blackout_id:
@@ -190,11 +219,11 @@ async def complete_blackout_deactivation(
                     }
                 ) as response:
                     if response.status == 200:
-                        print(f"[BLACKOUT] Notified backend of completion")
+                        logger.info(f"[BLACKOUT] Notified backend of completion")
                     else:
-                        print(f"[BLACKOUT] Failed to notify backend: HTTP {response.status}")
+                        logger.warning(f"[BLACKOUT] Failed to notify backend: HTTP {response.status}")
         except Exception as e:
-            print(f"[BLACKOUT] Error notifying backend: {e}")
+            logger.error(f"[BLACKOUT] Error notifying backend: {e}")
 
     return {
         "status": "completed",

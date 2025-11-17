@@ -33,14 +33,6 @@ from atak_integration.src.cot_generator import CoTGenerator
 from atak_integration.src.cot_schemas import SentinelDetection as CoTSentinelDetection
 from atak_integration.src.tak_client import TAKClient
 
-# Import CoT integration (Module 3)
-import sys
-import os
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', '..'))
-from atak_integration.src.cot_generator import CoTGenerator
-from atak_integration.src.cot_schemas import SentinelDetection as CoTSentinelDetection
-from atak_integration.src.tak_client import TAKClient
-
 # Configure logging
 logging.basicConfig(
     level=logging.INFO,

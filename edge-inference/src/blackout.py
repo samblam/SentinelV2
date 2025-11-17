@@ -5,9 +5,12 @@ Manages detection queueing during communications blackout
 import asyncio
 import aiosqlite
 import json
+import logging
 from datetime import datetime, timezone
 from typing import List, Dict, Any, Optional
 from pathlib import Path
+
+logger = logging.getLogger(__name__)
 
 
 class BlackoutController:
@@ -58,10 +61,10 @@ class BlackoutController:
         self.blackout_id = blackout_id
         self.activated_at = datetime.now(timezone.utc)
 
-        print(f"[BLACKOUT] Node {self.node_id} entering blackout mode")
-        print(f"[BLACKOUT] Blackout ID: {blackout_id}")
-        print(f"[BLACKOUT] Detections will be queued locally")
-        print(f"[BLACKOUT] RF signature suppressed")
+        logger.info(f"[BLACKOUT] Node {self.node_id} entering blackout mode")
+        logger.info(f"[BLACKOUT] Blackout ID: {blackout_id}")
+        logger.info(f"[BLACKOUT] Detections will be queued locally")
+        logger.info(f"[BLACKOUT] RF signature suppressed")
 
     async def deactivate(self) -> List[Dict[str, Any]]:
         """
@@ -75,8 +78,8 @@ class BlackoutController:
 
         detections = await self.get_queued_detections()
 
-        print(f"[BLACKOUT] Node {self.node_id} exiting blackout mode")
-        print(f"[BLACKOUT] Transmitting {len(detections)} queued detections")
+        logger.info(f"[BLACKOUT] Node {self.node_id} exiting blackout mode")
+        logger.info(f"[BLACKOUT] Transmitting {len(detections)} queued detections")
 
         self.is_active = False
         self.blackout_id = None
@@ -106,7 +109,7 @@ class BlackoutController:
         # Periodic status update (every 10 detections)
         count = await self.get_queued_count()
         if count % 10 == 0:
-            print(f"[BLACKOUT] {count} detections queued")
+            logger.info(f"[BLACKOUT] {count} detections queued")
 
     async def get_queued_detections(self) -> List[Dict[str, Any]]:
         """
