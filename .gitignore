@@ -23,3 +23,9 @@ Thumbs.db
 .env
 .env.local
 *.log
+
+# Testing
+.coverage
+.pytest_cache/
+htmlcov/
+.tox/
