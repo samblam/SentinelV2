@@ -408,8 +408,7 @@ async def test_cot_with_queued_detection(test_engine, get_session):
             "/api/blackout/deactivate",
             json={"node_id": "blackout-cot-node"}
         )
-        assert deactivate_response.status_code == 200
-        assert deactivate_response.json()["node_id"] == "blackout-cot-node"
+        assert deactivate_response.json()["detections_transmitted"] == 1
 
         # Get the detection ID
         detections_response = await client.get("/api/detections?limit=1")
