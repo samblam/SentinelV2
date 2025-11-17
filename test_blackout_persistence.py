@@ -17,6 +17,9 @@ import pytest
 from pathlib import Path
 from datetime import datetime, timezone
 
+# Mark all tests in this module as integration tests
+pytestmark = [pytest.mark.integration, pytest.mark.slow]
+
 
 TEST_DB_PATH = Path("/tmp/test_blackout_queue.db")
 

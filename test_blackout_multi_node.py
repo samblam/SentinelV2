@@ -13,6 +13,9 @@ import aiohttp
 import pytest
 from datetime import datetime, timezone
 
+# Mark all tests in this module as integration tests
+pytestmark = [pytest.mark.integration, pytest.mark.slow]
+
 
 BACKEND_URL = "http://localhost:8001"
 NODE_IDS = ["sentry-01", "sentry-02", "aerostat-01"]

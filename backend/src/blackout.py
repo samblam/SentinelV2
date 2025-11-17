@@ -3,8 +3,8 @@ Blackout Mode Coordination
 Manages tactical deception through covert surveillance operations
 """
 from enum import Enum
-from typing import Optional
-from datetime import datetime, timezone
+from typing import Optional, List
+from datetime import datetime, timezone, timedelta
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, desc
 
@@ -261,3 +261,49 @@ class BlackoutCoordinator:
             "activated_by": event.activated_by,
             "reason": event.reason
         }
+
+    async def recover_stuck_resuming_nodes(
+        self,
+        timeout_minutes: int = 5
+    ) -> List[dict]:
+        """
+        Detect and recover nodes stuck in 'resuming' state.
+
+        If a node has been in 'resuming' state for longer than the timeout,
+        force it back to 'online' status.
+
+        Args:
+            timeout_minutes: Maximum time a node should stay in 'resuming' state
+
+        Returns:
+            List of recovered nodes with details
+        """
+        timeout_threshold = datetime.now(timezone.utc) - timedelta(minutes=timeout_minutes)
+
+        # Find nodes in resuming state with deactivated blackout events
+        result = await self.db.execute(
+            select(Node, BlackoutEvent)
+            .join(BlackoutEvent, Node.id == BlackoutEvent.node_id)
+            .where(Node.status == "resuming")
+            .where(BlackoutEvent.deactivated_at.is_not(None))
+            .where(BlackoutEvent.deactivated_at < timeout_threshold)
+        )
+
+        stuck_pairs = result.all()
+        recovered = []
+
+        for node, event in stuck_pairs:
+            # Force node back to online
+            node.status = "online"
+
+            recovered.append({
+                "node_id": node.node_id,
+                "blackout_id": event.id,
+                "deactivated_at": event.deactivated_at.isoformat(),
+                "stuck_duration_minutes": int((datetime.now(timezone.utc) - event.deactivated_at).total_seconds() / 60)
+            })
+
+        if recovered:
+            await self.db.commit()
+
+        return recovered

@@ -5,8 +5,9 @@ from contextlib import asynccontextmanager
 from datetime import datetime, timezone
 from typing import List, Optional
 
-from fastapi import FastAPI, HTTPException, WebSocket, WebSocketDisconnect, Depends, Query
+from fastapi import FastAPI, HTTPException, WebSocket, WebSocketDisconnect, Depends, Query, Request
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
 from sqlalchemy import select, desc
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -145,6 +146,17 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+
+# Global exception handlers
+@app.exception_handler(ValueError)
+async def value_error_handler(request: Request, exc: ValueError):
+    """Convert ValueError to HTTP 400 Bad Request globally."""
+    logger.warning(f"ValueError on {request.url.path}: {str(exc)}")
+    return JSONResponse(
+        status_code=400,
+        content={"detail": str(exc)}
+    )
 
 
 # Health check endpoint
@@ -381,6 +393,96 @@ async def ingest_detection(
         raise HTTPException(status_code=500, detail="Failed to ingest detection") from e
 
 
+# Batch detection ingestion endpoint
+@app.post(
+    "/api/detections/batch",
+    summary="Batch Ingest Detections",
+    description="""
+    Ingest multiple detections in a single request for improved efficiency.
+
+    This endpoint is optimized for burst transmission after blackout mode,
+    allowing edge nodes to send all queued detections efficiently.
+
+    Processes all detections in a single database transaction for atomicity.
+    """,
+    tags=["Detections"],
+    responses={
+        200: {
+            "description": "Batch ingestion summary",
+            "content": {
+                "application/json": {
+                    "example": {
+                        "status": "success",
+                        "ingested": 15,
+                        "failed": 0,
+                        "detection_ids": [1, 2, 3, 4, 5]
+                    }
+                }
+            }
+        }
+    }
+)
+async def ingest_detections_batch(
+    detections: List[DetectionCreate],
+    session: AsyncSession = Depends(get_db)
+):
+    """Ingest multiple detections in a single batch."""
+    try:
+        ingested_ids = []
+        failed_count = 0
+
+        for detection_data in detections:
+            try:
+                # Get node by node_id string
+                result = await session.execute(
+                    select(Node).where(Node.node_id == detection_data.node_id)
+                )
+                node = result.scalar_one_or_none()
+
+                if not node:
+                    logger.warning(f"Node not found for batch detection: {detection_data.node_id}")
+                    failed_count += 1
+                    continue
+
+                # Create detection
+                detection = Detection(
+                    node_id=node.id,
+                    timestamp=detection_data.timestamp,
+                    latitude=detection_data.location.get("latitude"),
+                    longitude=detection_data.location.get("longitude"),
+                    altitude_m=detection_data.location.get("altitude_m"),
+                    accuracy_m=detection_data.location.get("accuracy_m"),
+                    detections_json=detection_data.detections,
+                    detection_count=detection_data.detection_count,
+                    inference_time_ms=detection_data.inference_time_ms,
+                    model=detection_data.model,
+                )
+                session.add(detection)
+                await session.flush()  # Get detection ID without committing
+                ingested_ids.append(detection.id)
+
+            except Exception as e:
+                logger.error(f"Error processing detection in batch: {e}")
+                failed_count += 1
+
+        # Commit all detections at once
+        await session.commit()
+
+        logger.info(f"Batch ingested {len(ingested_ids)} detections, {failed_count} failed")
+
+        return {
+            "status": "success" if failed_count == 0 else "partial",
+            "ingested": len(ingested_ids),
+            "failed": failed_count,
+            "detection_ids": ingested_ids
+        }
+
+    except Exception as e:
+        logger.error(f"Error in batch detection ingestion: {e}")
+        await session.rollback()
+        raise HTTPException(status_code=500, detail="Failed to ingest detection batch") from e
+
+
 # Get detections endpoint with pagination
 @app.get("/api/detections", response_model=List[DetectionResponse])
 async def get_detections(
@@ -426,13 +528,51 @@ async def get_detections(
 
 # Blackout Mode Endpoints (Module 5)
 
-@app.post("/api/nodes/{node_id}/blackout/activate")
+@app.post(
+    "/api/nodes/{node_id}/blackout/activate",
+    summary="Activate Blackout Mode",
+    description="""
+    Activate blackout mode for an edge node, enabling covert surveillance operations.
+
+    When blackout mode is activated:
+    - Node stops transmitting detections to backend (appears offline)
+    - Detections are queued locally in SQLite database
+    - Node status changes to 'covert'
+    - Blackout event is logged with operator and reason for audit trail
+
+    This allows the system to continue surveillance while appearing failed to adversaries.
+    """,
+    response_description="Blackout activation confirmation with event ID",
+    tags=["Blackout Mode"],
+    responses={
+        200: {
+            "description": "Blackout mode successfully activated",
+            "content": {
+                "application/json": {
+                    "example": {
+                        "status": "activated",
+                        "blackout_id": 1,
+                        "node_id": "sentry-01"
+                    }
+                }
+            }
+        },
+        400: {
+            "description": "Node not found or already in blackout",
+            "content": {
+                "application/json": {
+                    "example": {"detail": "Node already in blackout: sentry-01"}
+                }
+            }
+        }
+    }
+)
 async def activate_node_blackout(
     node_id: str,
     blackout_data: Optional[BlackoutActivate] = None,
     session: AsyncSession = Depends(get_db)
 ):
-    """Activate blackout mode for a node"""
+    """Activate blackout mode for an edge node."""
     coordinator = BlackoutCoordinator(session)
 
     try:
@@ -465,13 +605,46 @@ async def activate_node_blackout(
         raise HTTPException(status_code=500, detail="Failed to activate blackout") from e
 
 
-@app.post("/api/nodes/{node_id}/blackout/deactivate")
+@app.post(
+    "/api/nodes/{node_id}/blackout/deactivate",
+    summary="Deactivate Blackout Mode",
+    description="""
+    Deactivate blackout mode and resume normal operations.
+
+    When blackout mode is deactivated:
+    - Node status changes to 'resuming'
+    - Backend processes all queued detections from local queue
+    - Blackout event is closed with duration and detection counts
+    - Node returns to 'online' status after completion
+
+    All queued detections are transmitted with their original timestamps.
+    """,
+    response_description="Blackout deactivation summary",
+    tags=["Blackout Mode"],
+    responses={
+        200: {
+            "description": "Blackout mode successfully deactivated",
+            "content": {
+                "application/json": {
+                    "example": {
+                        "node_id": "sentry-01",
+                        "blackout_id": 1,
+                        "activated_at": "2025-01-17T12:00:00Z",
+                        "deactivated_at": "2025-01-17T12:30:00Z",
+                        "duration_seconds": 1800,
+                        "detections_queued": 15
+                    }
+                }
+            }
+        }
+    }
+)
 async def deactivate_node_blackout(
     node_id: str,
     session: AsyncSession = Depends(get_db),
-    queue_mgr: QueueManager = Depends(get_queue_manager)
+    queue_mgr: QueueManager = Depends(get_db)
 ):
-    """Deactivate blackout mode and trigger burst transmission"""
+    """Deactivate blackout mode and trigger burst transmission."""
     coordinator = BlackoutCoordinator(session)
 
     try:
@@ -623,6 +796,34 @@ async def get_blackout_events(
         }
         for event in events
     ]
+
+
+@app.post("/api/blackout/recover-stuck")
+async def recover_stuck_resuming_nodes(
+    timeout_minutes: int = Query(default=5, ge=1, le=60, description="Timeout in minutes for stuck resuming state"),
+    session: AsyncSession = Depends(get_db)
+):
+    """
+    Detect and recover nodes stuck in 'resuming' state.
+
+    Nodes that have been in 'resuming' state for longer than the timeout
+    are automatically recovered back to 'online' status.
+
+    This endpoint can be called manually or triggered by monitoring systems.
+    """
+    coordinator = BlackoutCoordinator(session)
+    recovered = await coordinator.recover_stuck_resuming_nodes(timeout_minutes)
+
+    if recovered:
+        logger.warning(f"Recovered {len(recovered)} stuck nodes: {[n['node_id'] for n in recovered]}")
+    else:
+        logger.info("No stuck nodes found")
+
+    return {
+        "status": "success",
+        "recovered_count": len(recovered),
+        "recovered_nodes": recovered
+    }
 
 
 # Legacy endpoints for backward compatibility
