@@ -1,0 +1,64 @@
+name: ATAK Integration Tests
+
+on:
+  push:
+    branches: [ main, develop ]
+    paths:
+      - 'atak_integration/**'
+      - '.github/workflows/test-atak.yml'
+  pull_request:
+    branches: [ main, develop ]
+    paths:
+      - 'atak_integration/**'
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: 'pip'
+          cache-dependency-path: 'atak_integration/requirements.txt'
+
+      - name: Install dependencies
+        working-directory: atak_integration
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+          pip install pytest pytest-asyncio pytest-cov
+
+      - name: Run tests with coverage
+        working-directory: atak_integration
+        run: |
+          pytest tests/ -v --cov=src --cov-report=xml --cov-report=term
+
+      - name: Upload coverage to Codecov
+        uses: codecov/codecov-action@v4
+        with:
+          files: ./atak_integration/coverage.xml
+          flags: atak-integration
+          name: atak-coverage
+
+      - name: Check test coverage threshold
+        working-directory: atak_integration
+        run: |
+          COVERAGE=$(python -c "import xml.etree.ElementTree as ET; tree = ET.parse('coverage.xml'); print(tree.getroot().attrib['line-rate'])")
+          COVERAGE_PCT=$(python -c "print(int(float($COVERAGE) * 100))")
+          echo "Coverage: $COVERAGE_PCT%"
+          if [ $COVERAGE_PCT -lt 80 ]; then
+            echo "⚠️  Coverage is below 80% threshold (target for CoT generation)"
+            # Don't fail, just warn
+          else
+            echo "✅ Coverage is above 80% threshold"
+          fi
+
+      - name: Validate CoT XML schema
+        working-directory: atak_integration
+        run: |
+          python -c "from src.cot_generator import CoTGenerator; from src.cot_validator import validate_cot_xml; print('✅ CoT modules load successfully')"

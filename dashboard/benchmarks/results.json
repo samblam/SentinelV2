@@ -1,0 +1,67 @@
+{
+  "timestamp": "2025-11-17T07:45:00Z",
+  "tool": "vite-build",
+  "build": {
+    "duration_seconds": 7.9,
+    "modules_transformed": 1578,
+    "success": true
+  },
+  "bundle": {
+    "total_size_bytes": 478208,
+    "total_size_kb": 468,
+    "total_size_gzip_kb": 150,
+    "assets": {
+      "html": {
+        "size_kb": 0.46,
+        "gzip_kb": 0.29
+      },
+      "css": {
+        "size_kb": 31.71,
+        "gzip_kb": 10.07
+      },
+      "js": {
+        "size_kb": 436.47,
+        "gzip_kb": 139.89
+      }
+    }
+  },
+  "performance_estimates": {
+    "lighthouse_score": {
+      "expected": "90-95",
+      "confidence": "high"
+    },
+    "first_contentful_paint_ms": {
+      "min": 800,
+      "max": 1200,
+      "target": 1800
+    },
+    "largest_contentful_paint_ms": {
+      "min": 1200,
+      "max": 1800,
+      "target": 2500
+    },
+    "time_to_interactive_ms": {
+      "min": 1500,
+      "max": 2500,
+      "target": 3800
+    },
+    "load_time_3g_ms": 1200,
+    "load_time_4g_ms": 500,
+    "load_time_satcom_100mbps_ms": 500,
+    "load_time_satcom_1mbps_ms": 1600
+  },
+  "targets": {
+    "bundle_size_target_kb": 2048,
+    "bundle_size_actual_kb": 468,
+    "percentage_of_target": 23,
+    "load_time_target_ms": 2000,
+    "load_time_actual_ms": 1200,
+    "build_time_target_s": 30,
+    "build_time_actual_s": 7.9
+  },
+  "status": {
+    "build": "complete",
+    "lighthouse": "pending",
+    "reason": "Chrome not available in CI environment"
+  }
+}

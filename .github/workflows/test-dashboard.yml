@@ -1,0 +1,75 @@
+name: Dashboard Tests
+
+on:
+  push:
+    branches: [ main, develop ]
+    paths:
+      - 'dashboard/**'
+      - '.github/workflows/test-dashboard.yml'
+  pull_request:
+    branches: [ main, develop ]
+    paths:
+      - 'dashboard/**'
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+          cache: 'npm'
+          cache-dependency-path: 'dashboard/package-lock.json'
+
+      - name: Install dependencies
+        working-directory: dashboard
+        run: npm ci
+
+      - name: Type check
+        working-directory: dashboard
+        run: npm run type-check
+
+      - name: Lint
+        working-directory: dashboard
+        run: npm run lint
+
+      - name: Run tests with coverage
+        working-directory: dashboard
+        run: npm run test:coverage
+
+      - name: Upload coverage to Codecov
+        uses: codecov/codecov-action@v4
+        with:
+          files: ./dashboard/coverage/coverage-final.json
+          flags: dashboard
+          name: dashboard-coverage
+
+      - name: Build production bundle
+        working-directory: dashboard
+        run: npm run build
+
+      - name: Check bundle size
+        working-directory: dashboard
+        run: |
+          BUNDLE_SIZE=$(du -sb dist | cut -f1)
+          BUNDLE_SIZE_MB=$(echo "scale=2; $BUNDLE_SIZE / 1024 / 1024" | bc)
+          echo "Bundle size: ${BUNDLE_SIZE_MB}MB"
+
+          # Warn if bundle is > 5MB (uncompressed)
+          if [ $BUNDLE_SIZE -gt 5242880 ]; then
+            echo "⚠️  Warning: Bundle size is larger than 5MB"
+          else
+            echo "✅ Bundle size is acceptable"
+          fi
+
+      - name: Upload build artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: dashboard-build
+          path: dashboard/dist/
+          retention-days: 7

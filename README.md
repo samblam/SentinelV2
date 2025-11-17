@@ -97,6 +97,171 @@ Sentinel's **Blackout Protocol** enables covert operations through apparent syst
                 └─────────────────────────┘
 ```
 
+### System Architecture Diagram
+
+```mermaid
+graph TB
+    subgraph Arctic["Arctic Environment (SATCOM-Constrained)"]
+        E1[Edge Node 1<br/>sentry-01<br/>YOLOv5-nano<br/>SQLite Queue]
+        E2[Edge Node 2<br/>aerostat-01<br/>YOLOv5-nano<br/>SQLite Queue]
+    end
+
+    subgraph Backend["Backend Infrastructure"]
+        API[FastAPI Backend<br/>Port 8000]
+        DB[(PostgreSQL<br/>Detections, Nodes,<br/>Queue, Blackout Events)]
+        WS[WebSocket Server]
+    end
+
+    subgraph Frontend["Operator Interface"]
+        DASH[React Dashboard<br/>Tactical Map<br/>Node Control<br/>Alert Panel]
+    end
+
+    subgraph External["External Systems"]
+        TAK[TAK Server<br/>ATAK Integration]
+    end
+
+    E1 -->|"Detections (1KB JSON)"| API
+    E2 -->|"Detections (1KB JSON)"| API
+    API --> DB
+    API -->|CoT XML| TAK
+    API --> WS
+    WS -->|Real-time Updates| DASH
+    DASH -->|Blackout Commands| API
+
+    style E1 fill:#2d5f8d,stroke:#1a3d5f,color:#fff
+    style E2 fill:#2d5f8d,stroke:#1a3d5f,color:#fff
+    style API fill:#2d8d5f,stroke:#1a5f3d,color:#fff
+    style DB fill:#8d5f2d,stroke:#5f3d1a,color:#fff
+    style DASH fill:#8d2d5f,stroke:#5f1a3d,color:#fff
+    style TAK fill:#5f5f5f,stroke:#3d3d3d,color:#fff
+```
+
+### Blackout Mode Sequence Diagram
+
+```mermaid
+sequenceDiagram
+    participant O as Operator
+    participant D as Dashboard
+    participant B as Backend API
+    participant E as Edge Node
+    participant Q as SQLite Queue
+
+    Note over O,E: ACTIVATION PHASE
+    O->>D: Click "Activate Blackout"
+    D->>D: Enter reason
+    D->>B: POST /api/blackout/activate
+    B->>B: Update node status → "covert"
+    B-->>E: WebSocket: Blackout Command
+    E->>E: Stop external transmissions
+    E->>E: Continue local inference
+
+    Note over O,E: COVERT OPERATIONS
+    loop Every Detection
+        E->>E: Run YOLOv5 inference
+        E->>Q: Queue detection locally
+    end
+
+    Note over O,E: DEACTIVATION PHASE
+    O->>D: Click "Resume Transmission"
+    D->>B: POST /api/blackout/deactivate
+    B->>B: Update node status → "resuming"
+    B-->>E: WebSocket: Resume Command
+    E->>Q: Retrieve all queued detections
+    E->>B: Burst transmission (batch)
+    B->>B: Ingest all detections
+    B->>B: Update node status → "online"
+    B-->>D: WebSocket: Detection updates
+    D->>D: Display all detections on map
+
+    Note over O,E: Intelligence revealed to operator
+```
+
+### Data Flow: Normal vs. Blackout Mode
+
+```mermaid
+flowchart LR
+    subgraph Normal["Normal Operations"]
+        direction TB
+        N1[Image Captured] --> N2[YOLOv5 Inference<br/>~87ms]
+        N2 --> N3[Detection JSON<br/>~1KB]
+        N3 --> N4[Transmit to Backend]
+        N4 --> N5[Store in PostgreSQL]
+        N5 --> N6[WebSocket Push]
+        N6 --> N7[Dashboard Update<br/><1s total latency]
+    end
+
+    subgraph Blackout["Blackout Mode"]
+        direction TB
+        B1[Image Captured] --> B2[YOLOv5 Inference<br/>~87ms]
+        B2 --> B3[Detection JSON<br/>~1KB]
+        B3 --> B4{Blackout Active?}
+        B4 -->|Yes| B5[Queue in SQLite]
+        B5 --> B6[Continue Silently]
+        B6 --> B7[Appear Offline]
+        B4 -->|Deactivated| B8[Burst Transmission]
+        B8 --> B9[Backend Ingestion]
+        B9 --> B10[Full Intelligence<br/>Picture Revealed]
+    end
+
+    style Normal fill:#2d5f8d,stroke:#1a3d5f,color:#fff
+    style Blackout fill:#8d5f2d,stroke:#5f3d1a,color:#fff
+```
+
+### Database Schema Diagram
+
+```mermaid
+erDiagram
+    nodes ||--o{ detections : "has many"
+    nodes ||--o{ queue_items : "has many"
+    nodes ||--o{ blackout_events : "has many"
+
+    nodes {
+        int id PK
+        string node_id UK "Unique node identifier"
+        string status "online|offline|covert|resuming"
+        timestamp last_heartbeat
+        timestamp created_at
+    }
+
+    detections {
+        int id PK
+        int node_id FK
+        timestamp timestamp
+        float latitude
+        float longitude
+        float altitude_m
+        float accuracy_m
+        jsonb detections_json "Array of object detections"
+        int detection_count
+        float inference_time_ms
+        string model
+        timestamp created_at
+    }
+
+    queue_items {
+        int id PK
+        int node_id FK
+        jsonb payload "Queued detection data"
+        string status "pending|processing|completed|failed"
+        int retry_count
+        timestamp next_attempt_at
+        timestamp created_at
+        timestamp processed_at
+    }
+
+    blackout_events {
+        int id PK
+        int node_id FK
+        timestamp activated_at
+        timestamp deactivated_at
+        string activated_by "Operator ID"
+        text reason "Tactical justification"
+        int duration_seconds
+        int detections_queued
+        int detections_transmitted
+    }
+```
+
 ### Information Flow
 
 **Normal Operations:**
@@ -791,14 +956,22 @@ alembic downgrade -1
 
 | Metric | Target | Current |
 |--------|--------|---------|
-| Inference Time | <100ms | ~87ms (YOLOv5-nano on CPU) |
-| API Latency | <50ms | ~30ms (async FastAPI) |
-| Dashboard Load | <2s | <1s (code splitting, lazy loading) |
-| WebSocket Latency | <100ms | <50ms |
-| Model Size | <10MB | 7.5MB (YOLOv5-nano) |
-| Detection Accuracy | >75% mAP | ~75% (YOLOv5-nano standard) |
-| Bandwidth Reduction | >100x | 500x (500KB image → 1KB detection) |
-| Data Loss Rate | 0% | 0% (persistent queue, retry logic) |
+| **Inference Time** | <100ms | **64.10ms** (measured) ✅ **37% faster** |
+| **Throughput** | >5 fps | **16.93 fps** (measured) ✅ **3.4x faster** |
+| API Latency | <50ms | *Requires backend services* ⏳ |
+| Dashboard Load | <2s | *Requires dev server* ⏳ |
+| WebSocket Latency | <100ms | *Requires backend services* ⏳ |
+| **Model Size** | <10MB | **7.50MB** (measured) ✅ **25% smaller** |
+| Detection Accuracy | >75% mAP | ~75% (YOLOv5-nano standard) ✅ |
+| Bandwidth Reduction | >100x | 500x (500KB image → 1KB detection) ✅ |
+| Data Loss Rate | 0% | 0% (persistent queue, retry logic) ✅ |
+
+**Benchmark Status:**
+- ✅ **Edge Inference:** Measured November 17, 2025 - All targets exceeded
+- ⏳ **Backend API:** Ready to measure (requires `docker-compose up -d`)
+- ⏳ **Dashboard:** Ready to measure (requires `npm run dev` + Lighthouse)
+
+See [PERFORMANCE_RESULTS.md](PERFORMANCE_RESULTS.md) for detailed benchmark analysis.
 
 ---
 
