@@ -55,6 +55,7 @@ class BlackoutActivate(BaseModel):
     """Blackout activation request."""
     node_id: str
     reason: Optional[str] = None
+    operator_id: Optional[str] = None
 
 
 class BlackoutDeactivate(BaseModel):

@@ -118,7 +118,14 @@ class BlackoutCoordinator:
         # Update blackout event
         now = datetime.now(timezone.utc)
         event.deactivated_at = now
-        event.duration_seconds = int((now - event.activated_at).total_seconds())
+
+        # Ensure activated_at is timezone-aware (handle both aware and naive datetimes)
+        activated_at = event.activated_at
+        if activated_at.tzinfo is None:
+            # If naive, assume UTC
+            activated_at = activated_at.replace(tzinfo=timezone.utc)
+
+        event.duration_seconds = int((now - activated_at).total_seconds())
 
         # Update node status to resuming (temporary during burst transmission)
         node.status = "resuming"
