@@ -30,6 +30,8 @@ interface DialogContentProps {
 export function DialogContent({ children, className = '' }: DialogContentProps) {
   return (
     <div
+      role="dialog"
+      aria-modal="true"
       className={`bg-tactical-bg border border-tactical-border rounded-lg shadow-lg p-6 w-full max-w-md ${className}`}
     >
       {children}

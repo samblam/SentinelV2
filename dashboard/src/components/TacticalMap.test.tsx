@@ -1,6 +1,6 @@
 // TacticalMap.test.tsx
 import { describe, it, expect, vi } from 'vitest';
-import { render, screen } from '@/test/test-utils';
+import { renderWithProviders, screen } from '@/test/test-utils';
 import { TacticalMap } from './TacticalMap';
 import { createMockDetection, createMockNode } from '@/test/test-utils';
 
@@ -8,7 +8,7 @@ describe('TacticalMap', () => {
   const mockOnDetectionClick = vi.fn();
 
   it('renders map container', () => {
-    render(
+    renderWithProviders(
       <TacticalMap
         detections={[]}
         nodes={[]}
@@ -21,7 +21,7 @@ describe('TacticalMap', () => {
   });
 
   it('renders tile layer for map tiles', () => {
-    render(
+    renderWithProviders(
       <TacticalMap
         detections={[]}
         nodes={[]}
@@ -39,7 +39,7 @@ describe('TacticalMap', () => {
       createMockDetection({ id: 2, latitude: 71.0, longitude: -101.0 }),
     ];
 
-    render(
+    renderWithProviders(
       <TacticalMap
         detections={detections}
         nodes={[]}
@@ -60,7 +60,7 @@ describe('TacticalMap', () => {
 
     // Nodes need to have location data for markers
     // This depends on implementation - nodes might not have lat/lon
-    render(
+    renderWithProviders(
       <TacticalMap
         detections={[]}
         nodes={nodes}
@@ -80,7 +80,7 @@ describe('TacticalMap', () => {
       detection_count: 2,
     });
 
-    render(
+    renderWithProviders(
       <TacticalMap
         detections={[detection]}
         nodes={[]}
@@ -104,7 +104,7 @@ describe('TacticalMap', () => {
       ],
     });
 
-    render(
+    renderWithProviders(
       <TacticalMap
         detections={[detection]}
         nodes={[]}
@@ -119,7 +119,7 @@ describe('TacticalMap', () => {
   });
 
   it('handles empty detections array', () => {
-    render(
+    renderWithProviders(
       <TacticalMap
         detections={[]}
         nodes={[]}
@@ -133,7 +133,7 @@ describe('TacticalMap', () => {
   });
 
   it('handles empty nodes array', () => {
-    render(
+    renderWithProviders(
       <TacticalMap
         detections={[]}
         nodes={[]}
@@ -152,7 +152,7 @@ describe('TacticalMap', () => {
       createMockDetection({ id: 3, latitude: 70.3, longitude: -100.3 }),
     ];
 
-    render(
+    renderWithProviders(
       <TacticalMap
         detections={detections}
         nodes={[]}
@@ -171,7 +171,7 @@ describe('TacticalMap', () => {
       createMockDetection({ id: 2 }),
     ];
 
-    const { container } = render(
+    const { container } = renderWithProviders(
       <TacticalMap
         detections={detections}
         nodes={[]}
@@ -194,7 +194,7 @@ describe('TacticalMap', () => {
       ],
     });
 
-    render(
+    renderWithProviders(
       <TacticalMap
         detections={[highConfidenceDetection]}
         nodes={[]}
@@ -214,7 +214,7 @@ describe('TacticalMap', () => {
       createMockNode({ id: 3, node_id: 'node-03', status: 'offline' }),
     ];
 
-    render(
+    renderWithProviders(
       <TacticalMap
         detections={[]}
         nodes={nodes}

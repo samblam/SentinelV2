@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useMemo } from 'react';
 import { AlertTriangle, Bell, BellOff, X, Volume2, VolumeX } from 'lucide-react';
-import { Detection } from '@/lib/types';
+import type { Detection } from '@/lib/types';
 import { cn } from '@/lib/utils';
 
 interface AlertPanelProps {
@@ -48,7 +48,12 @@ export function AlertPanel({ detections, confidenceThreshold = 0.85 }: AlertPane
       }));
 
     if (newAlerts.length > 0) {
-      setAlerts((prev) => [...newAlerts, ...prev].slice(0, 50)); // Keep max 50 alerts
+      setAlerts((prev) => {
+        const prevIds = new Set(prev.map(a => a.id));
+        const uniqueNewAlerts = newAlerts.filter(a => !prevIds.has(a.id));
+        if (uniqueNewAlerts.length === 0) return prev;
+        return [...uniqueNewAlerts, ...prev].slice(0, 50);
+      });
 
       // Play sound for new alerts (with debounce)
       const now = Date.now();

@@ -3,6 +3,7 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { renderHook, waitFor } from '@testing-library/react';
 import { useWebSocket } from './useWebSocket';
 import { useStore } from '@/store/useStore';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 
 // Mock the useStore hook
 vi.mock('@/store/useStore', () => ({
@@ -14,6 +15,8 @@ describe('useWebSocket', () => {
   let mockSetConnected: ReturnType<typeof vi.fn>;
   let mockAddDetection: ReturnType<typeof vi.fn>;
   let mockUpdateNode: ReturnType<typeof vi.fn>;
+  let queryClient: QueryClient;
+  let wrapper: ({ children }: { children: React.ReactNode }) => JSX.Element;
 
   beforeEach(() => {
     // Reset mocks
@@ -23,7 +26,7 @@ describe('useWebSocket', () => {
 
     // Mock useStore return value
     (useStore as any).mockReturnValue({
-      setConnected: mockSetConnected,
+      setIsConnected: mockSetConnected,
       addDetection: mockAddDetection,
       updateNode: mockUpdateNode,
     });
@@ -43,6 +46,23 @@ describe('useWebSocket', () => {
 
     // @ts-ignore - Mock global WebSocket
     global.WebSocket = vi.fn(() => mockWebSocket) as any;
+    (global.WebSocket as any).CONNECTING = 0;
+    (global.WebSocket as any).OPEN = 1;
+    (global.WebSocket as any).CLOSING = 2;
+    (global.WebSocket as any).CLOSED = 3;
+
+    // Setup QueryClient
+    queryClient = new QueryClient({
+      defaultOptions: {
+        queries: {
+          retry: false,
+        },
+      },
+    });
+
+    wrapper = ({ children }) => (
+      <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
+    );
   });
 
   afterEach(() => {
@@ -50,7 +70,7 @@ describe('useWebSocket', () => {
   });
 
   it('creates WebSocket connection on mount', () => {
-    renderHook(() => useWebSocket());
+    renderHook(() => useWebSocket(), { wrapper });
 
     expect(global.WebSocket).toHaveBeenCalledWith(
       expect.stringContaining('ws://')
@@ -58,7 +78,7 @@ describe('useWebSocket', () => {
   });
 
   it('sets connected state when WebSocket opens', async () => {
-    renderHook(() => useWebSocket());
+    renderHook(() => useWebSocket(), { wrapper });
 
     // Simulate WebSocket open event
     const openHandler = mockWebSocket.addEventListener.mock.calls.find(
@@ -75,7 +95,7 @@ describe('useWebSocket', () => {
   });
 
   it('sets disconnected state when WebSocket closes', async () => {
-    renderHook(() => useWebSocket());
+    renderHook(() => useWebSocket(), { wrapper });
 
     // Simulate WebSocket close event
     const closeHandler = mockWebSocket.addEventListener.mock.calls.find(
@@ -92,7 +112,7 @@ describe('useWebSocket', () => {
   });
 
   it('handles detection message', async () => {
-    renderHook(() => useWebSocket());
+    renderHook(() => useWebSocket(), { wrapper });
 
     const detectionData = {
       id: 1,
@@ -126,7 +146,7 @@ describe('useWebSocket', () => {
   });
 
   it('handles node status update message', async () => {
-    renderHook(() => useWebSocket());
+    renderHook(() => useWebSocket(), { wrapper });
 
     const nodeData = {
       id: 1,
@@ -158,7 +178,7 @@ describe('useWebSocket', () => {
   });
 
   it('handles blackout event message', async () => {
-    renderHook(() => useWebSocket());
+    renderHook(() => useWebSocket(), { wrapper });
 
     const blackoutData = {
       id: 1,
@@ -192,7 +212,7 @@ describe('useWebSocket', () => {
   });
 
   it('handles malformed JSON message gracefully', async () => {
-    renderHook(() => useWebSocket());
+    renderHook(() => useWebSocket(), { wrapper });
 
     // Simulate WebSocket message with invalid JSON
     const messageHandler = mockWebSocket.addEventListener.mock.calls.find(
@@ -212,7 +232,7 @@ describe('useWebSocket', () => {
   it('handles WebSocket error', async () => {
     const consoleErrorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
 
-    renderHook(() => useWebSocket());
+    renderHook(() => useWebSocket(), { wrapper });
 
     // Simulate WebSocket error event
     const errorHandler = mockWebSocket.addEventListener.mock.calls.find(
@@ -233,7 +253,7 @@ describe('useWebSocket', () => {
   });
 
   it('cleans up WebSocket on unmount', () => {
-    const { unmount } = renderHook(() => useWebSocket());
+    const { unmount } = renderHook(() => useWebSocket(), { wrapper });
 
     unmount();
 
@@ -244,7 +264,7 @@ describe('useWebSocket', () => {
   it('attempts to reconnect after connection is lost', async () => {
     vi.useFakeTimers();
 
-    renderHook(() => useWebSocket());
+    renderHook(() => useWebSocket(), { wrapper });
 
     // Simulate WebSocket close (unexpected)
     const closeHandler = mockWebSocket.addEventListener.mock.calls.find(
@@ -267,9 +287,9 @@ describe('useWebSocket', () => {
   });
 
   it('does not reconnect if connection was closed normally', () => {
-    renderHook(() => useWebSocket());
+    renderHook(() => useWebSocket(), { wrapper });
 
-    const { unmount } = renderHook(() => useWebSocket());
+    const { unmount } = renderHook(() => useWebSocket(), { wrapper });
 
     // Close normally (on unmount)
     unmount();
@@ -279,16 +299,16 @@ describe('useWebSocket', () => {
   });
 
   it('parses WebSocket URL from environment variable', () => {
-    const originalEnv = import.meta.env.VITE_WS_URL;
-
     // Mock environment variable
-    (import.meta as any).env.VITE_WS_URL = 'ws://custom-backend:8000/ws';
+    vi.stubEnv('VITE_WS_URL', 'ws://custom-backend:8000/ws');
 
-    renderHook(() => useWebSocket());
+    renderHook(() => useWebSocket(), { wrapper });
 
-    expect(global.WebSocket).toHaveBeenCalledWith('ws://custom-backend:8000/ws');
+    expect(global.WebSocket).toHaveBeenCalledWith(
+      expect.stringContaining('ws://custom-backend:8000/ws')
+    );
 
     // Restore
-    (import.meta as any).env.VITE_WS_URL = originalEnv;
+    vi.unstubAllEnvs();
   });
 });

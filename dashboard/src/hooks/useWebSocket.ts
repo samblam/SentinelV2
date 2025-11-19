@@ -3,12 +3,10 @@
 import { useEffect, useRef, useCallback } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { useStore } from '@/store/useStore';
-import { WebSocketMessage } from '@/lib/types';
+import type { WebSocketMessage } from '@/lib/types';
 
 // Generate unique client ID for WebSocket connection (required by backend)
 const CLIENT_ID = crypto.randomUUID();
-const WS_BASE_URL = import.meta.env.VITE_WS_URL || 'ws://localhost:8001/ws';
-const WS_URL = `${WS_BASE_URL}?client_id=${CLIENT_ID}`;
 
 export function useWebSocket() {
   const wsRef = useRef<WebSocket | null>(null);
@@ -20,6 +18,9 @@ export function useWebSocket() {
 
   const connect = useCallback(() => {
     if (wsRef.current?.readyState === WebSocket.OPEN) return;
+
+    const WS_BASE_URL = import.meta.env.VITE_WS_URL || 'ws://localhost:8001/ws';
+    const WS_URL = `${WS_BASE_URL}?client_id=${CLIENT_ID}`;
 
     const ws = new WebSocket(WS_URL);
 

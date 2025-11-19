@@ -93,8 +93,8 @@ describe('BlackoutControl', () => {
       user.type(textarea, 'Testing');
     });
 
-    // Find and click confirm button
-    const confirmButton = screen.getByText('Activate');
+    // Find and click confirm button (in dialog)
+    const confirmButton = screen.getAllByText('Activate Blackout')[1]; // Second one is in dialog
     await user.click(confirmButton);
 
     await waitFor(() => {
@@ -164,7 +164,7 @@ describe('BlackoutControl', () => {
       />
     );
 
-    expect(screen.getByText(/12 queued/i)).toBeInTheDocument();
+    expect(screen.getByText(/Detections queued: 12/)).toBeInTheDocument();
   });
 
   it('calls onDeactivate when resume button clicked', async () => {
@@ -214,9 +214,9 @@ describe('BlackoutControl', () => {
 
     // Open dialog and activate
     await user.click(screen.getByText('Activate Blackout'));
-    await waitFor(() => screen.getByText('Activate'));
+    await waitFor(() => screen.getAllByText('Activate Blackout')[1]); // Second one is in dialog
 
-    const activateButton = screen.getByText('Activate');
+    const activateButton = screen.getAllByText('Activate Blackout')[1];
     await user.click(activateButton);
 
     // Button should be disabled during loading
@@ -263,8 +263,9 @@ describe('BlackoutControl', () => {
       />
     );
 
-    // Should not show activate button for offline nodes
-    expect(screen.queryByText('Activate Blackout')).not.toBeInTheDocument();
+    // Button should be disabled for offline nodes
+    const button = screen.getByText('Activate Blackout');
+    expect(button).toBeDisabled();
   });
 
   it('displays warning icon for covert status', () => {

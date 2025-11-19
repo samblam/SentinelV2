@@ -8,6 +8,19 @@ afterEach(() => {
   cleanup();
 });
 
+// Polyfill crypto.randomUUID
+if (!global.crypto) {
+  Object.defineProperty(global, 'crypto', {
+    value: {
+      randomUUID: () => 'test-uuid-' + Math.random(),
+    },
+  });
+} else if (!global.crypto.randomUUID) {
+  Object.defineProperty(global.crypto, 'randomUUID', {
+    value: () => 'test-uuid-' + Math.random(),
+  });
+}
+
 // Mock window.matchMedia (required for some components)
 Object.defineProperty(window, 'matchMedia', {
   writable: true,
@@ -50,11 +63,28 @@ vi.mock('leaflet', () => ({
     tileLayer: vi.fn(),
     marker: vi.fn(),
     icon: vi.fn(),
+    divIcon: vi.fn(() => ({})),
+    Icon: {
+      Default: {
+        prototype: {
+          _getIconUrl: undefined,
+        },
+        mergeOptions: vi.fn(),
+      },
+    },
   },
   Map: vi.fn(),
   TileLayer: vi.fn(),
   Marker: vi.fn(),
-  Icon: vi.fn(),
+  Icon: {
+    Default: {
+      prototype: {
+        _getIconUrl: undefined,
+      },
+      mergeOptions: vi.fn(),
+    },
+  },
+  divIcon: vi.fn(() => ({})),
 }));
 
 // Mock react-leaflet (for TacticalMap tests)
@@ -63,6 +93,7 @@ vi.mock('react-leaflet', () => ({
   TileLayer: () => <div data-testid="tile-layer" />,
   Marker: ({ children }: any) => <div data-testid="marker">{children}</div>,
   Popup: ({ children }: any) => <div data-testid="popup">{children}</div>,
+  Circle: ({ children }: any) => <div data-testid="circle">{children}</div>,
   useMap: () => ({
     setView: vi.fn(),
     fitBounds: vi.fn(),

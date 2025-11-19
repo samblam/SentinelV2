@@ -8,14 +8,14 @@ describe('ConnectionStatus', () => {
     render(<ConnectionStatus isConnected={true} />);
 
     expect(screen.getByText('Connected')).toBeInTheDocument();
-    expect(screen.getByText('Connected').parentElement).toHaveClass('text-green-400');
+    expect(screen.getByText('Connected')).toHaveClass('text-tactical-success');
   });
 
   it('renders disconnected status correctly', () => {
     render(<ConnectionStatus isConnected={false} />);
 
     expect(screen.getByText('Disconnected')).toBeInTheDocument();
-    expect(screen.getByText('Disconnected').parentElement).toHaveClass('text-red-400');
+    expect(screen.getByText('Disconnected')).toHaveClass('text-tactical-danger');
   });
 
   it('displays correct icon for connected state', () => {
