@@ -92,7 +92,7 @@ async def test_blackout_mode_complete_workflow(client, test_image_path):
     assert len(deactivate_data["queued_detections"]) == 3
 
     # Step 6: Verify queued detections have correct node IDs
-    queued_node_ids = [d["node_id"] for d in deactivate_data["queued_detections"]]
+    queued_node_ids = [d["detection"]["node_id"] for d in deactivate_data["queued_detections"]]
     assert queued_node_ids == detections_sent
 
     # Step 7: Verify blackout is now inactive
@@ -178,7 +178,7 @@ async def test_custom_node_id_propagation(client, test_image_path):
 
     deactivate_result = await client.post("/blackout/deactivate")
     queued = deactivate_result.json()["queued_detections"]
-    assert queued[0]["node_id"] == custom_id_2
+    assert queued[0]["detection"]["node_id"] == custom_id_2
 
 
 @pytest.mark.asyncio
@@ -278,9 +278,9 @@ async def test_full_arctic_deployment_simulation(client, test_image_path):
 
     queued = deactivate.json()["queued_detections"]
     for detection in queued:
-        assert detection["node_id"] == "arctic-base-01"
-        assert "detections" in detection
-        assert "location" in detection
+        assert detection["detection"]["node_id"] == "arctic-base-01"
+        assert "detections" in detection["detection"]
+        assert "location" in detection["detection"]
 
     # Phase 6: Resume normal operations
     with open(test_image_path, 'rb') as f:
@@ -293,6 +293,8 @@ async def test_full_arctic_deployment_simulation(client, test_image_path):
     assert final_response.status_code == 200
     # Should NOT be queued anymore
     assert "status" not in final_response.json() or final_response.json().get("status") != "queued"
+
+
 
 
 @pytest.mark.asyncio
@@ -320,13 +322,25 @@ async def test_component_integration():
     assert message["model"] == inference_result["model"]
 
     # Test 2: Blackout controller integration
-    controller = BlackoutController(db_path=":memory:")  # Use in-memory DB
+    import tempfile
+    import os
+    
+    # Use a temp file instead of :memory: because BlackoutController opens a new connection
+    # for each operation, and :memory: databases are not shared across connections.
+    with tempfile.NamedTemporaryFile(delete=False, suffix=".db") as tmp:
+        db_path = tmp.name
+    
+    try:
+        controller = BlackoutController(node_id="integration-test-01", db_path=db_path)  # Use temp DB
 
-    await controller.activate()
-    await controller.queue_detection(message)
+        await controller.activate()
+        await controller.queue_detection(message)
 
-    queued = await controller.get_queued_detections()
-    assert len(queued) == 1
-    assert queued[0]["node_id"] == "integration-test-01"
+        queued = await controller.get_queued_detections()
+        assert len(queued) == 1
+        assert queued[0]["detection"]["node_id"] == "integration-test-01"
 
-    await controller.deactivate()
+        await controller.deactivate()
+    finally:
+        if os.path.exists(db_path):
+            os.unlink(db_path)

@@ -1,0 +1,788 @@
+============================= test session starts =============================
+platform win32 -- Python 3.11.9, pytest-9.0.1, pluggy-1.6.0 -- C:\Users\samue\repos\SentinelV2\SentinelV2\.venv\Scripts\python.exe
+cachedir: .pytest_cache
+rootdir: C:\Users\samue\repos\SentinelV2\SentinelV2\backend
+configfile: pytest.ini
+plugins: anyio-4.11.0, asyncio-1.3.0, cov-7.0.0
+asyncio: mode=Mode.AUTO, debug=False, asyncio_default_fixture_loop_scope=None, asyncio_default_test_loop_scope=function
+collecting ... collected 11 items
+
+tests/test_blackout.py::TestBlackoutActivation::test_activate_blackout_success FAILED [  9%]
+tests/test_blackout.py::TestBlackoutActivation::test_activate_blackout_node_not_found FAILED [ 18%]
+tests/test_blackout.py::TestBlackoutActivation::test_activate_blackout_already_active FAILED [ 27%]
+tests/test_blackout.py::TestBlackoutDeactivation::test_deactivate_blackout_success FAILED [ 36%]
+tests/test_blackout.py::TestBlackoutDeactivation::test_deactivate_blackout_not_in_blackout FAILED [ 45%]
+tests/test_blackout.py::TestBlackoutStatus::test_get_status_active FAILED [ 54%]
+tests/test_blackout.py::TestBlackoutStatus::test_get_status_inactive FAILED [ 63%]
+tests/test_blackout.py::TestStuckNodeRecovery::test_recover_stuck_nodes FAILED [ 72%]
+tests/test_blackout.py::TestStuckNodeRecovery::test_no_stuck_nodes FAILED [ 81%]
+tests/test_blackout.py::TestDetectionCountUpdate::test_update_detection_count FAILED [ 90%]
+tests/test_blackout.py::TestCompleteResumption::test_complete_resumption FAILED [100%]
+ERROR: Coverage failure: total of 38 is less than fail-under=75
+
+
+================================== FAILURES ===================================
+____________ TestBlackoutActivation.test_activate_blackout_success ____________
+
+self = <tests.test_blackout.TestBlackoutActivation object at 0x0000012F29730910>
+coordinator = <src.blackout.BlackoutCoordinator object at 0x0000012F2990BDD0>
+mock_db = <AsyncMock spec='AsyncSession' id='1302071622864'>
+
+    @pytest.mark.asyncio
+    async def test_activate_blackout_success(self, coordinator, mock_db):
+        """Test successful blackout activation."""
+        # Setup mock node
+        node = Node(
+            id=1,
+            node_id="test-node-01",
+            status="online"
+        )
+    
+        # Mock database query
+        mock_result = AsyncMock()
+        mock_result.scalar_one_or_none.return_value = node
+        mock_db.execute.return_value = mock_result
+    
+        # Activate blackout
+>       event = await coordinator.activate_blackout(
+            node_id="test-node-01",
+            operator_id="operator-123",
+            reason="Test activation"
+        )
+
+tests\test_blackout.py:50: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+self = <src.blackout.BlackoutCoordinator object at 0x0000012F2990BDD0>
+node_id = 'test-node-01', operator_id = 'operator-123'
+reason = 'Test activation'
+
+    async def activate_blackout(
+        self,
+        node_id: str,
+        operator_id: Optional[str] = None,
+        reason: Optional[str] = None
+    ) -> BlackoutEvent:
+        """
+        Activate blackout mode for a node.
+    
+        Args:
+            node_id: Edge node identifier
+            operator_id: ID of operator activating blackout
+            reason: Tactical justification for blackout
+    
+        Returns:
+            BlackoutEvent record
+    
+        Raises:
+            ValueError: If node not found or already in blackout
+        """
+        # Get node
+        result = await self.db.execute(
+            select(Node).where(Node.node_id == node_id)
+        )
+        node = result.scalar_one_or_none()
+    
+        if not node:
+            raise ValueError(f"Node not found: {node_id}")
+    
+>       if node.status == "covert":
+           ^^^^^^^^^^^
+E       AttributeError: 'coroutine' object has no attribute 'status'
+
+src\blackout.py:58: AttributeError
+________ TestBlackoutActivation.test_activate_blackout_node_not_found _________
+
+self = <tests.test_blackout.TestBlackoutActivation object at 0x0000012F29831490>
+coordinator = <src.blackout.BlackoutCoordinator object at 0x0000012F299CFB10>
+mock_db = <AsyncMock spec='AsyncSession' id='1302070219984'>
+
+    @pytest.mark.asyncio
+    async def test_activate_blackout_node_not_found(self, coordinator, mock_db):
+        """Test activation fails when node doesn't exist."""
+        # Mock database query - node not found
+        mock_result = AsyncMock()
+        mock_result.scalar_one_or_none.return_value = None
+        mock_db.execute.return_value = mock_result
+    
+        # Should raise ValueError
+        with pytest.raises(ValueError, match="Node not found"):
+>           await coordinator.activate_blackout(node_id="nonexistent-node")
+
+tests\test_blackout.py:80: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+self = <src.blackout.BlackoutCoordinator object at 0x0000012F299CFB10>
+node_id = 'nonexistent-node', operator_id = None, reason = None
+
+    async def activate_blackout(
+        self,
+        node_id: str,
+        operator_id: Optional[str] = None,
+        reason: Optional[str] = None
+    ) -> BlackoutEvent:
+        """
+        Activate blackout mode for a node.
+    
+        Args:
+            node_id: Edge node identifier
+            operator_id: ID of operator activating blackout
+            reason: Tactical justification for blackout
+    
+        Returns:
+            BlackoutEvent record
+    
+        Raises:
+            ValueError: If node not found or already in blackout
+        """
+        # Get node
+        result = await self.db.execute(
+            select(Node).where(Node.node_id == node_id)
+        )
+        node = result.scalar_one_or_none()
+    
+        if not node:
+            raise ValueError(f"Node not found: {node_id}")
+    
+>       if node.status == "covert":
+           ^^^^^^^^^^^
+E       AttributeError: 'coroutine' object has no attribute 'status'
+
+src\blackout.py:58: AttributeError
+________ TestBlackoutActivation.test_activate_blackout_already_active _________
+
+self = <tests.test_blackout.TestBlackoutActivation object at 0x0000012F29831F10>
+coordinator = <src.blackout.BlackoutCoordinator object at 0x0000012F29620E10>
+mock_db = <AsyncMock spec='AsyncSession' id='1302073573264'>
+
+    @pytest.mark.asyncio
+    async def test_activate_blackout_already_active(self, coordinator, mock_db):
+        """Test activation fails when node already in blackout."""
+        # Setup mock node already in covert mode
+        node = Node(
+            id=1,
+            node_id="test-node-01",
+            status="covert"
+        )
+    
+        # Mock database query
+        mock_result = AsyncMock()
+        mock_result.scalar_one_or_none.return_value = node
+        mock_db.execute.return_value = mock_result
+    
+        # Should raise ValueError
+        with pytest.raises(ValueError, match="already in blackout"):
+>           await coordinator.activate_blackout(node_id="test-node-01")
+
+tests\test_blackout.py:99: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+self = <src.blackout.BlackoutCoordinator object at 0x0000012F29620E10>
+node_id = 'test-node-01', operator_id = None, reason = None
+
+    async def activate_blackout(
+        self,
+        node_id: str,
+        operator_id: Optional[str] = None,
+        reason: Optional[str] = None
+    ) -> BlackoutEvent:
+        """
+        Activate blackout mode for a node.
+    
+        Args:
+            node_id: Edge node identifier
+            operator_id: ID of operator activating blackout
+            reason: Tactical justification for blackout
+    
+        Returns:
+            BlackoutEvent record
+    
+        Raises:
+            ValueError: If node not found or already in blackout
+        """
+        # Get node
+        result = await self.db.execute(
+            select(Node).where(Node.node_id == node_id)
+        )
+        node = result.scalar_one_or_none()
+    
+        if not node:
+            raise ValueError(f"Node not found: {node_id}")
+    
+>       if node.status == "covert":
+           ^^^^^^^^^^^
+E       AttributeError: 'coroutine' object has no attribute 'status'
+
+src\blackout.py:58: AttributeError
+__________ TestBlackoutDeactivation.test_deactivate_blackout_success __________
+
+self = <tests.test_blackout.TestBlackoutDeactivation object at 0x0000012F29832910>
+coordinator = <src.blackout.BlackoutCoordinator object at 0x0000012F29A06650>
+mock_db = <AsyncMock spec='AsyncSession' id='1302073591184'>
+
+    @pytest.mark.asyncio
+    async def test_deactivate_blackout_success(self, coordinator, mock_db):
+        """Test successful blackout deactivation."""
+        # Setup mock node
+        node = Node(
+            id=1,
+            node_id="test-node-01",
+            status="covert"
+        )
+    
+        # Setup mock blackout event
+        event = BlackoutEvent(
+            id=1,
+            node_id=1,
+            activated_at=datetime.now(timezone.utc) - timedelta(minutes=10),
+            detections_queued=5
+        )
+    
+        # Mock database queries
+        mock_node_result = AsyncMock()
+        mock_node_result.scalar_one_or_none.return_value = node
+    
+        mock_event_result = AsyncMock()
+        mock_event_result.scalar_one_or_none.return_value = event
+    
+        mock_db.execute.side_effect = [mock_node_result, mock_event_result]
+    
+        # Deactivate blackout
+>       summary = await coordinator.deactivate_blackout(node_id="test-node-01")
+                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+tests\test_blackout.py:133: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+self = <src.blackout.BlackoutCoordinator object at 0x0000012F29A06650>
+node_id = 'test-node-01'
+
+    async def deactivate_blackout(
+        self,
+        node_id: str
+    ) -> dict:
+        """
+        Deactivate blackout mode for a node.
+    
+        Args:
+            node_id: Edge node identifier
+    
+        Returns:
+            Summary of blackout event
+    
+        Raises:
+            ValueError: If node not found or not in blackout
+        """
+        # Get node
+        result = await self.db.execute(
+            select(Node).where(Node.node_id == node_id)
+        )
+        node = result.scalar_one_or_none()
+    
+        if not node:
+            raise ValueError(f"Node not found: {node_id}")
+    
+>       if node.status != "covert":
+           ^^^^^^^^^^^
+E       AttributeError: 'coroutine' object has no attribute 'status'
+
+src\blackout.py:103: AttributeError
+______ TestBlackoutDeactivation.test_deactivate_blackout_not_in_blackout ______
+
+self = <tests.test_blackout.TestBlackoutDeactivation object at 0x0000012F29833290>
+coordinator = <src.blackout.BlackoutCoordinator object at 0x0000012F29A6E310>
+mock_db = <AsyncMock spec='AsyncSession' id='1302073566352'>
+
+    @pytest.mark.asyncio
+    async def test_deactivate_blackout_not_in_blackout(self, coordinator, mock_db):
+        """Test deactivation fails when node not in blackout."""
+        # Setup mock node not in covert mode
+        node = Node(
+            id=1,
+            node_id="test-node-01",
+            status="online"
+        )
+    
+        # Mock database query
+        mock_result = AsyncMock()
+        mock_result.scalar_one_or_none.return_value = node
+        mock_db.execute.return_value = mock_result
+    
+        # Should raise ValueError
+        with pytest.raises(ValueError, match="not in blackout"):
+>           await coordinator.deactivate_blackout(node_id="test-node-01")
+
+tests\test_blackout.py:167: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+self = <src.blackout.BlackoutCoordinator object at 0x0000012F29A6E310>
+node_id = 'test-node-01'
+
+    async def deactivate_blackout(
+        self,
+        node_id: str
+    ) -> dict:
+        """
+        Deactivate blackout mode for a node.
+    
+        Args:
+            node_id: Edge node identifier
+    
+        Returns:
+            Summary of blackout event
+    
+        Raises:
+            ValueError: If node not found or not in blackout
+        """
+        # Get node
+        result = await self.db.execute(
+            select(Node).where(Node.node_id == node_id)
+        )
+        node = result.scalar_one_or_none()
+    
+        if not node:
+            raise ValueError(f"Node not found: {node_id}")
+    
+>       if node.status != "covert":
+           ^^^^^^^^^^^
+E       AttributeError: 'coroutine' object has no attribute 'status'
+
+src\blackout.py:103: AttributeError
+__________________ TestBlackoutStatus.test_get_status_active __________________
+
+self = <tests.test_blackout.TestBlackoutStatus object at 0x0000012F29833CD0>
+coordinator = <src.blackout.BlackoutCoordinator object at 0x0000012F29A7C690>
+mock_db = <AsyncMock spec='AsyncSession' id='1302073884880'>
+
+    @pytest.mark.asyncio
+    async def test_get_status_active(self, coordinator, mock_db):
+        """Test getting status for active blackout."""
+        # Setup mock node
+        node = Node(
+            id=1,
+            node_id="test-node-01",
+            status="covert"
+        )
+    
+        # Setup mock blackout event
+        event = BlackoutEvent(
+            id=1,
+            node_id=1,
+            activated_at=datetime.now(timezone.utc) - timedelta(minutes=5),
+            activated_by="operator-123",
+            reason="Test",
+            detections_queued=3
+        )
+    
+        # Mock database queries
+        mock_node_result = AsyncMock()
+        mock_node_result.scalar_one_or_none.return_value = node
+    
+        mock_event_result = AsyncMock()
+        mock_event_result.scalar_one_or_none.return_value = event
+    
+        mock_db.execute.side_effect = [mock_node_result, mock_event_result]
+    
+        # Get status
+>       status = await coordinator.get_blackout_status(node_id="test-node-01")
+                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+tests\test_blackout.py:203: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+self = <src.blackout.BlackoutCoordinator object at 0x0000012F29A7C690>
+node_id = 'test-node-01'
+
+    async def get_blackout_status(
+        self,
+        node_id: str
+    ) -> dict:
+        """
+        Get current blackout status for a node.
+    
+        Args:
+            node_id: Edge node identifier
+    
+        Returns:
+            Blackout status information
+        """
+        result = await self.db.execute(
+            select(Node).where(Node.node_id == node_id)
+        )
+        node = result.scalar_one_or_none()
+    
+        if not node:
+            return {"status": "node_not_found"}
+    
+>       if node.status != "covert":
+           ^^^^^^^^^^^
+E       AttributeError: 'coroutine' object has no attribute 'status'
+
+src\blackout.py:235: AttributeError
+_________________ TestBlackoutStatus.test_get_status_inactive _________________
+
+self = <tests.test_blackout.TestBlackoutStatus object at 0x0000012F29831610>
+coordinator = <src.blackout.BlackoutCoordinator object at 0x0000012F29AA3A50>
+mock_db = <AsyncMock spec='AsyncSession' id='1302074044368'>
+
+    @pytest.mark.asyncio
+    async def test_get_status_inactive(self, coordinator, mock_db):
+        """Test getting status for inactive node."""
+        # Setup mock node
+        node = Node(
+            id=1,
+            node_id="test-node-01",
+            status="online"
+        )
+    
+        # Mock database query
+        mock_result = AsyncMock()
+        mock_result.scalar_one_or_none.return_value = node
+        mock_db.execute.return_value = mock_result
+    
+        # Get status
+>       status = await coordinator.get_blackout_status(node_id="test-node-01")
+                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+tests\test_blackout.py:227: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+self = <src.blackout.BlackoutCoordinator object at 0x0000012F29AA3A50>
+node_id = 'test-node-01'
+
+    async def get_blackout_status(
+        self,
+        node_id: str
+    ) -> dict:
+        """
+        Get current blackout status for a node.
+    
+        Args:
+            node_id: Edge node identifier
+    
+        Returns:
+            Blackout status information
+        """
+        result = await self.db.execute(
+            select(Node).where(Node.node_id == node_id)
+        )
+        node = result.scalar_one_or_none()
+    
+        if not node:
+            return {"status": "node_not_found"}
+    
+>       if node.status != "covert":
+           ^^^^^^^^^^^
+E       AttributeError: 'coroutine' object has no attribute 'status'
+
+src\blackout.py:235: AttributeError
+_______________ TestStuckNodeRecovery.test_recover_stuck_nodes ________________
+
+self = <tests.test_blackout.TestStuckNodeRecovery object at 0x0000012F29840350>
+coordinator = <src.blackout.BlackoutCoordinator object at 0x0000012F29ADD150>
+mock_db = <AsyncMock spec='AsyncSession' id='1302074046608'>
+
+    @pytest.mark.asyncio
+    async def test_recover_stuck_nodes(self, coordinator, mock_db):
+        """Test recovery of nodes stuck in resuming state."""
+        # Setup stuck node
+        node = Node(
+            id=1,
+            node_id="stuck-node-01",
+            status="resuming"
+        )
+    
+        # Setup blackout event that's been stuck for 10 minutes
+        event = BlackoutEvent(
+            id=1,
+            node_id=1,
+            activated_at=datetime.now(timezone.utc) - timedelta(minutes=20),
+            deactivated_at=datetime.now(timezone.utc) - timedelta(minutes=10)
+        )
+    
+        # Mock database query
+        mock_result = AsyncMock()
+        mock_result.all.return_value = [(node, event)]
+        mock_db.execute.return_value = mock_result
+    
+        # Recover stuck nodes
+>       recovered = await coordinator.recover_stuck_resuming_nodes(timeout_minutes=5)
+                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+tests\test_blackout.py:261: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+self = <src.blackout.BlackoutCoordinator object at 0x0000012F29ADD150>
+timeout_minutes = 5
+
+    async def recover_stuck_resuming_nodes(
+        self,
+        timeout_minutes: int = 5
+    ) -> List[dict]:
+        """
+        Detect and recover nodes stuck in 'resuming' state.
+    
+        If a node has been in 'resuming' state for longer than the timeout,
+        force it back to 'online' status.
+    
+        Args:
+            timeout_minutes: Maximum time a node should stay in 'resuming' state
+    
+        Returns:
+            List of recovered nodes with details
+        """
+        timeout_threshold = datetime.now(timezone.utc) - timedelta(minutes=timeout_minutes)
+    
+        # Find nodes in resuming state with deactivated blackout events
+        result = await self.db.execute(
+            select(Node, BlackoutEvent)
+            .join(BlackoutEvent, Node.id == BlackoutEvent.node_id)
+            .where(Node.status == "resuming")
+            .where(BlackoutEvent.deactivated_at.is_not(None))
+            .where(BlackoutEvent.deactivated_at < timeout_threshold)
+        )
+    
+        stuck_pairs = result.all()
+        recovered = []
+    
+>       for node, event in stuck_pairs:
+E       TypeError: 'coroutine' object is not iterable
+
+src\blackout.py:295: TypeError
+__________________ TestStuckNodeRecovery.test_no_stuck_nodes __________________
+
+self = <tests.test_blackout.TestStuckNodeRecovery object at 0x0000012F29840810>
+coordinator = <src.blackout.BlackoutCoordinator object at 0x0000012F29ADE510>
+mock_db = <AsyncMock spec='AsyncSession' id='1302074500048'>
+
+    @pytest.mark.asyncio
+    async def test_no_stuck_nodes(self, coordinator, mock_db):
+        """Test when no nodes are stuck."""
+        # Mock database query - no stuck nodes
+        mock_result = AsyncMock()
+        mock_result.all.return_value = []
+        mock_db.execute.return_value = mock_result
+    
+        # Recover stuck nodes
+>       recovered = await coordinator.recover_stuck_resuming_nodes(timeout_minutes=5)
+                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+tests\test_blackout.py:283: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+self = <src.blackout.BlackoutCoordinator object at 0x0000012F29ADE510>
+timeout_minutes = 5
+
+    async def recover_stuck_resuming_nodes(
+        self,
+        timeout_minutes: int = 5
+    ) -> List[dict]:
+        """
+        Detect and recover nodes stuck in 'resuming' state.
+    
+        If a node has been in 'resuming' state for longer than the timeout,
+        force it back to 'online' status.
+    
+        Args:
+            timeout_minutes: Maximum time a node should stay in 'resuming' state
+    
+        Returns:
+            List of recovered nodes with details
+        """
+        timeout_threshold = datetime.now(timezone.utc) - timedelta(minutes=timeout_minutes)
+    
+        # Find nodes in resuming state with deactivated blackout events
+        result = await self.db.execute(
+            select(Node, BlackoutEvent)
+            .join(BlackoutEvent, Node.id == BlackoutEvent.node_id)
+            .where(Node.status == "resuming")
+            .where(BlackoutEvent.deactivated_at.is_not(None))
+            .where(BlackoutEvent.deactivated_at < timeout_threshold)
+        )
+    
+        stuck_pairs = result.all()
+        recovered = []
+    
+>       for node, event in stuck_pairs:
+E       TypeError: 'coroutine' object is not iterable
+
+src\blackout.py:295: TypeError
+____________ TestDetectionCountUpdate.test_update_detection_count _____________
+
+self = <tests.test_blackout.TestDetectionCountUpdate object at 0x0000012F29840FD0>
+coordinator = <src.blackout.BlackoutCoordinator object at 0x0000012F29B1AD50>
+mock_db = <AsyncMock spec='AsyncSession' id='1302074507088'>
+
+    @pytest.mark.asyncio
+    async def test_update_detection_count(self, coordinator, mock_db):
+        """Test updating queued detection count."""
+        # Setup mock node
+        node = Node(
+            id=1,
+            node_id="test-node-01",
+            status="covert"
+        )
+    
+        # Setup mock blackout event
+        event = BlackoutEvent(
+            id=1,
+            node_id=1,
+            activated_at=datetime.now(timezone.utc),
+            detections_queued=0
+        )
+    
+        # Mock database queries
+        mock_node_result = AsyncMock()
+        mock_node_result.scalar_one_or_none.return_value = node
+    
+        mock_event_result = AsyncMock()
+        mock_event_result.scalar_one_or_none.return_value = event
+    
+        mock_db.execute.side_effect = [mock_node_result, mock_event_result]
+    
+        # Update count
+>       await coordinator.update_detection_count(node_id="test-node-01", count=10)
+
+tests\test_blackout.py:323: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+self = <src.blackout.BlackoutCoordinator object at 0x0000012F29B1AD50>
+node_id = 'test-node-01', count = 10
+
+    async def update_detection_count(
+        self,
+        node_id: str,
+        count: int
+    ):
+        """
+        Update queued detection count for active blackout.
+    
+        Args:
+            node_id: Edge node identifier
+            count: Number of detections queued
+        """
+        result = await self.db.execute(
+            select(Node).where(Node.node_id == node_id)
+        )
+        node = result.scalar_one_or_none()
+    
+>       if not node or node.status != "covert":
+                       ^^^^^^^^^^^
+E       AttributeError: 'coroutine' object has no attribute 'status'
+
+src\blackout.py:161: AttributeError
+_______________ TestCompleteResumption.test_complete_resumption _______________
+
+self = <tests.test_blackout.TestCompleteResumption object at 0x0000012F29841A90>
+coordinator = <src.blackout.BlackoutCoordinator object at 0x0000012F29A699D0>
+mock_db = <AsyncMock spec='AsyncSession' id='1302074594768'>
+
+    @pytest.mark.asyncio
+    async def test_complete_resumption(self, coordinator, mock_db):
+        """Test completing blackout resumption."""
+        # Setup mock node
+        node = Node(
+            id=1,
+            node_id="test-node-01",
+            status="resuming"
+        )
+    
+        # Setup mock blackout event
+        event = BlackoutEvent(
+            id=1,
+            node_id=1,
+            activated_at=datetime.now(timezone.utc) - timedelta(minutes=10),
+            deactivated_at=datetime.now(timezone.utc),
+            detections_transmitted=0
+        )
+    
+        # Mock database queries
+        mock_node_result = AsyncMock()
+        mock_node_result.scalar_one_or_none.return_value = node
+    
+        mock_event_result = AsyncMock()
+        mock_event_result.scalar_one_or_none.return_value = event
+    
+        mock_db.execute.side_effect = [mock_node_result, mock_event_result]
+    
+        # Complete resumption
+>       await coordinator.complete_resumption(node_id="test-node-01", transmitted_count=15)
+
+tests\test_blackout.py:364: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+self = <src.blackout.BlackoutCoordinator object at 0x0000012F29A699D0>
+node_id = 'test-node-01', transmitted_count = 15
+
+    async def complete_resumption(
+        self,
+        node_id: str,
+        transmitted_count: int
+    ):
+        """
+        Mark blackout resumption as complete.
+    
+        Args:
+            node_id: Edge node identifier
+            transmitted_count: Number of detections transmitted
+        """
+        result = await self.db.execute(
+            select(Node).where(Node.node_id == node_id)
+        )
+        node = result.scalar_one_or_none()
+    
+        if not node:
+            return
+    
+        # Update blackout event
+        result = await self.db.execute(
+            select(BlackoutEvent)
+>           .where(BlackoutEvent.node_id == node.id)
+                                            ^^^^^^^
+            .where(BlackoutEvent.deactivated_at.is_not(None))
+            .order_by(desc(BlackoutEvent.deactivated_at))
+        )
+E       AttributeError: 'coroutine' object has no attribute 'id'
+
+src\blackout.py:200: AttributeError
+============================== warnings summary ===============================
+src\models.py:8
+  C:\Users\samue\repos\SentinelV2\SentinelV2\backend\src\models.py:8: MovedIn20Warning: The ``declarative_base()`` function is now available as sqlalchemy.orm.declarative_base(). (deprecated since: 2.0) (Background on SQLAlchemy 2.0 at: https://sqlalche.me/e/b8d9)
+    Base = declarative_base()
+
+..\.venv\Lib\site-packages\starlette\formparsers.py:12
+  C:\Users\samue\repos\SentinelV2\SentinelV2\.venv\Lib\site-packages\starlette\formparsers.py:12: PendingDeprecationWarning: Please use `import python_multipart` instead.
+    import multipart
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+=============================== tests coverage ================================
+_______________ coverage: platform win32, python 3.11.9-final-0 _______________
+
+Name               Stmts   Miss  Cover   Missing
+------------------------------------------------
+src\__init__.py        0      0   100%
+src\blackout.py       93     48    48%   56, 59-76, 101, 104-135, 162-175, 195, 204-212, 233, 236-255, 297-309
+src\config.py         16      0   100%
+src\database.py       30     18    40%   30-31, 36-44, 50-58
+src\main.py          407    326    20%   50, 55-64, 69-78, 84-130, 155-156, 166, 176-203, 213-233, 242-250, 260-275, 286-393, 430-483, 494-526, 576-605, 648-708, 717-719, 737-762, 772-785, 814-822, 836, 846, 867-884, 889, 911-939, 951-993, 1014-1031, 1036, 1058-1086, 1098-1140, 1147-1178
+src\models.py         55      0   100%
+src\queue.py          72     53    26%   17-19, 24-30, 43-57, 69-84, 97-98, 108-122, 126-130, 139-156, 160-167
+src\schemas.py        39      0   100%
+src\websocket.py      36     22    39%   17-19, 23-25, 29-30, 34-44, 48-52, 56-63, 67
+------------------------------------------------
+TOTAL                748    467    38%
+Coverage HTML written to dir htmlcov
+FAIL Required test coverage of 75% not reached. Total coverage: 37.57%
+=========================== short test summary info ===========================
+FAILED tests/test_blackout.py::TestBlackoutActivation::test_activate_blackout_success - AttributeError: 'coroutine' object has no attribute 'status'
+FAILED tests/test_blackout.py::TestBlackoutActivation::test_activate_blackout_node_not_found - AttributeError: 'coroutine' object has no attribute 'status'
+FAILED tests/test_blackout.py::TestBlackoutActivation::test_activate_blackout_already_active - AttributeError: 'coroutine' object has no attribute 'status'
+FAILED tests/test_blackout.py::TestBlackoutDeactivation::test_deactivate_blackout_success - AttributeError: 'coroutine' object has no attribute 'status'
+FAILED tests/test_blackout.py::TestBlackoutDeactivation::test_deactivate_blackout_not_in_blackout - AttributeError: 'coroutine' object has no attribute 'status'
+FAILED tests/test_blackout.py::TestBlackoutStatus::test_get_status_active - AttributeError: 'coroutine' object has no attribute 'status'
+FAILED tests/test_blackout.py::TestBlackoutStatus::test_get_status_inactive - AttributeError: 'coroutine' object has no attribute 'status'
+FAILED tests/test_blackout.py::TestStuckNodeRecovery::test_recover_stuck_nodes - TypeError: 'coroutine' object is not iterable
+FAILED tests/test_blackout.py::TestStuckNodeRecovery::test_no_stuck_nodes - TypeError: 'coroutine' object is not iterable
+FAILED tests/test_blackout.py::TestDetectionCountUpdate::test_update_detection_count - AttributeError: 'coroutine' object has no attribute 'status'
+FAILED tests/test_blackout.py::TestCompleteResumption::test_complete_resumption - AttributeError: 'coroutine' object has no attribute 'id'
+======================= 11 failed, 2 warnings in 0.78s ========================

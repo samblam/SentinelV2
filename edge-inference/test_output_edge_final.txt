@@ -1,0 +1,874 @@
+============================= test session starts =============================
+platform win32 -- Python 3.11.9, pytest-9.0.1, pluggy-1.6.0 -- C:\Users\samue\repos\SentinelV2\SentinelV2\.venv\Scripts\python.exe
+cachedir: .pytest_cache
+rootdir: C:\Users\samue\repos\SentinelV2\SentinelV2\edge-inference
+configfile: pytest.ini
+testpaths: tests
+plugins: anyio-4.11.0, asyncio-1.3.0, cov-7.0.0
+asyncio: mode=Mode.AUTO, debug=False, asyncio_default_fixture_loop_scope=None, asyncio_default_test_loop_scope=function
+collecting ... collected 83 items
+
+tests/test_api.py::test_root_endpoint PASSED                             [  1%]
+tests/test_api.py::test_health_endpoint PASSED                           [  2%]
+tests/test_api.py::test_detect_endpoint_requires_image PASSED            [  3%]
+tests/test_api.py::test_detect_endpoint_with_image PASSED                [  4%]
+tests/test_api.py::test_detect_endpoint_rejects_non_image PASSED         [  6%]
+tests/test_api.py::test_detect_endpoint_rejects_oversized_file PASSED    [  7%]
+tests/test_api.py::test_detect_endpoint_handles_corrupted_image PASSED   [  8%]
+tests/test_api.py::test_detect_endpoint_handles_text_as_image PASSED     [  9%]
+tests/test_api.py::test_detect_endpoint_preserves_file_extension PASSED  [ 10%]
+tests/test_api.py::test_detect_endpoint_custom_node_id PASSED            [ 12%]
+tests/test_api.py::test_blackout_activate_endpoint PASSED                [ 13%]
+tests/test_api.py::test_blackout_deactivate_endpoint PASSED              [ 14%]
+tests/test_api.py::test_blackout_status_endpoint PASSED                  [ 15%]
+tests/test_api.py::test_blackout_workflow PASSED                         [ 16%]
+tests/test_api.py::test_detect_performance PASSED                        [ 18%]
+tests/test_api.py::test_multiple_detections PASSED                       [ 19%]
+tests/test_blackout.py::test_blackout_activation PASSED                  [ 20%]
+tests/test_blackout.py::test_blackout_initial_state PASSED               [ 21%]
+tests/test_blackout.py::test_blackout_queues_detections PASSED           [ 22%]
+tests/test_blackout.py::test_blackout_deactivation_returns_queue PASSED  [ 24%]
+tests/test_blackout.py::test_blackout_deactivation_clears_queue PASSED   [ 25%]
+tests/test_blackout.py::test_blackout_multiple_detections PASSED         [ 26%]
+tests/test_blackout.py::test_blackout_persistence PASSED                 [ 27%]
+tests/test_blackout.py::test_blackout_queue_before_activation PASSED     [ 28%]
+tests/test_blackout.py::test_blackout_empty_queue PASSED                 [ 30%]
+tests/test_blackout.py::test_blackout_reactivation PASSED                [ 31%]
+tests/test_blackout.py::test_blackout_large_queue PASSED                 [ 32%]
+tests/test_blackout.py::test_blackout_very_large_queue PASSED            [ 33%]
+tests/test_e2e.py::test_complete_detection_workflow PASSED               [ 34%]
+tests/test_e2e.py::test_blackout_mode_complete_workflow FAILED           [ 36%]
+tests/test_e2e.py::test_concurrent_detections PASSED                     [ 37%]
+tests/test_e2e.py::test_blackout_reactivation_workflow FAILED            [ 38%]
+tests/test_e2e.py::test_custom_node_id_propagation FAILED                [ 39%]
+tests/test_e2e.py::test_error_recovery_workflow FAILED                   [ 40%]
+tests/test_e2e.py::test_blackout_already_active_idempotency FAILED       [ 42%]
+tests/test_e2e.py::test_blackout_deactivate_when_inactive FAILED         [ 43%]
+tests/test_e2e.py::test_full_arctic_deployment_simulation FAILED         [ 44%]
+tests/test_e2e.py::test_component_integration FAILED                     [ 45%]
+tests/test_inference.py::test_engine_initializes PASSED                  [ 46%]
+tests/test_inference.py::test_inference_returns_correct_schema PASSED    [ 48%]
+tests/test_inference.py::test_inference_performance PASSED               [ 49%]
+tests/test_inference.py::test_detection_format PASSED                    [ 50%]
+tests/test_inference.py::test_multiple_inferences[1] PASSED              [ 51%]
+tests/test_inference.py::test_multiple_inferences[2] PASSED              [ 53%]
+tests/test_inference.py::test_multiple_inferences[3] PASSED              [ 54%]
+tests/test_inference.py::test_inference_nonexistent_image PASSED         [ 55%]
+tests/test_inference.py::test_inference_corrupted_image PASSED           [ 56%]
+tests/test_inference.py::test_inference_invalid_file_type PASSED         [ 57%]
+tests/test_schemas.py::test_bbox_valid PASSED                            [ 59%]
+tests/test_schemas.py::test_bbox_type_coercion PASSED                    [ 60%]
+tests/test_schemas.py::test_bbox_invalid_type PASSED                     [ 61%]
+tests/test_schemas.py::test_bbox_missing_required_fields PASSED          [ 62%]
+tests/test_schemas.py::test_detection_valid PASSED                       [ 63%]
+tests/test_schemas.py::test_detection_with_alias PASSED                  [ 65%]
+tests/test_schemas.py::test_detection_confidence_bounds PASSED           [ 66%]
+tests/test_schemas.py::test_detection_confidence_out_of_bounds PASSED    [ 67%]
+tests/test_schemas.py::test_detection_missing_required_fields PASSED     [ 68%]
+tests/test_schemas.py::test_location_valid PASSED                        [ 69%]
+tests/test_schemas.py::test_location_extreme_values PASSED               [ 71%]
+tests/test_schemas.py::test_location_invalid_coordinates PASSED          [ 72%]
+tests/test_schemas.py::test_location_missing_required_fields PASSED      [ 73%]
+tests/test_schemas.py::test_detection_message_complete PASSED            [ 74%]
+tests/test_schemas.py::test_detection_message_empty_detections PASSED    [ 75%]
+tests/test_schemas.py::test_detection_message_multiple_detections PASSED [ 77%]
+tests/test_schemas.py::test_health_response_valid PASSED                 [ 78%]
+tests/test_schemas.py::test_health_response_with_gpu PASSED              [ 79%]
+tests/test_schemas.py::test_blackout_activate_response PASSED            [ 80%]
+tests/test_schemas.py::test_blackout_activate_response_already_active PASSED [ 81%]
+tests/test_schemas.py::test_blackout_deactivate_response PASSED          [ 83%]
+tests/test_schemas.py::test_blackout_deactivate_response_not_active PASSED [ 84%]
+tests/test_schemas.py::test_blackout_status_response_active PASSED       [ 85%]
+tests/test_schemas.py::test_blackout_status_response_inactive PASSED     [ 86%]
+tests/test_schemas.py::test_detection_message_json_serialization PASSED  [ 87%]
+tests/test_schemas.py::test_detection_message_from_dict PASSED           [ 89%]
+tests/test_telemetry.py::test_generates_arctic_coordinates PASSED        [ 90%]
+tests/test_telemetry.py::test_generates_unique_node_id PASSED            [ 91%]
+tests/test_telemetry.py::test_node_id_is_consistent PASSED               [ 92%]
+tests/test_telemetry.py::test_creates_detection_message PASSED           [ 93%]
+tests/test_telemetry.py::test_creates_message_with_empty_detections PASSED [ 95%]
+tests/test_telemetry.py::test_custom_node_id_override PASSED             [ 96%]
+tests/test_telemetry.py::test_custom_gps_override PASSED                 [ 97%]
+tests/test_telemetry.py::test_multiple_gps_generations_vary PASSED       [ 98%]
+tests/test_telemetry.py::test_base_coordinates_configurable PASSED       [100%]
+
+================================== FAILURES ===================================
+____________________ test_blackout_mode_complete_workflow _____________________
+
+client = <httpx.AsyncClient object at 0x0000020E707B7790>
+test_image_path = 'C:\\Users\\samue\\repos\\SentinelV2\\SentinelV2\\edge-inference\\tests\\fixtures\\test_image.jpg'
+
+    @pytest.mark.asyncio
+    async def test_blackout_mode_complete_workflow(client, test_image_path):
+        """Test complete blackout mode workflow"""
+        # Step 1: Check initial blackout status
+>       status_response = await client.get("/blackout/status")
+                          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+tests\test_e2e.py:54: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+..\.venv\Lib\site-packages\httpx\_client.py:1768: in get
+    return await self.request(
+..\.venv\Lib\site-packages\httpx\_client.py:1540: in request
+    return await self.send(request, auth=auth, follow_redirects=follow_redirects)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+..\.venv\Lib\site-packages\httpx\_client.py:1629: in send
+    response = await self._send_handling_auth(
+..\.venv\Lib\site-packages\httpx\_client.py:1657: in _send_handling_auth
+    response = await self._send_handling_redirects(
+..\.venv\Lib\site-packages\httpx\_client.py:1694: in _send_handling_redirects
+    response = await self._send_single_request(request)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+..\.venv\Lib\site-packages\httpx\_client.py:1730: in _send_single_request
+    response = await transport.handle_async_request(request)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+..\.venv\Lib\site-packages\httpx\_transports\asgi.py:170: in handle_async_request
+    await self.app(scope, receive, send)
+..\.venv\Lib\site-packages\fastapi\applications.py:1054: in __call__
+    await super().__call__(scope, receive, send)
+..\.venv\Lib\site-packages\starlette\applications.py:123: in __call__
+    await self.middleware_stack(scope, receive, send)
+..\.venv\Lib\site-packages\starlette\middleware\errors.py:186: in __call__
+    raise exc
+..\.venv\Lib\site-packages\starlette\middleware\errors.py:164: in __call__
+    await self.app(scope, receive, _send)
+..\.venv\Lib\site-packages\starlette\middleware\exceptions.py:65: in __call__
+    await wrap_app_handling_exceptions(self.app, conn)(scope, receive, send)
+..\.venv\Lib\site-packages\starlette\_exception_handler.py:64: in wrapped_app
+    raise exc
+..\.venv\Lib\site-packages\starlette\_exception_handler.py:53: in wrapped_app
+    await app(scope, receive, sender)
+..\.venv\Lib\site-packages\starlette\routing.py:756: in __call__
+    await self.middleware_stack(scope, receive, send)
+..\.venv\Lib\site-packages\starlette\routing.py:776: in app
+    await route.handle(scope, receive, send)
+..\.venv\Lib\site-packages\starlette\routing.py:297: in handle
+    await self.app(scope, receive, send)
+..\.venv\Lib\site-packages\starlette\routing.py:77: in app
+    await wrap_app_handling_exceptions(app, request)(scope, receive, send)
+..\.venv\Lib\site-packages\starlette\_exception_handler.py:64: in wrapped_app
+    raise exc
+..\.venv\Lib\site-packages\starlette\_exception_handler.py:53: in wrapped_app
+    await app(scope, receive, sender)
+..\.venv\Lib\site-packages\starlette\routing.py:72: in app
+    response = await func(request)
+               ^^^^^^^^^^^^^^^^^^^
+..\.venv\Lib\site-packages\fastapi\routing.py:278: in app
+    raw_response = await run_endpoint_function(
+..\.venv\Lib\site-packages\fastapi\routing.py:191: in run_endpoint_function
+    return await dependant.call(**values)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+src\main.py:184: in blackout_status
+    "queued_count": await blackout.get_queued_count()
+                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+src\blackout.py:153: in get_queued_count
+    cursor = await db.execute(
+..\.venv\Lib\site-packages\aiosqlite\core.py:183: in execute
+    cursor = await self._execute(self._conn.execute, sql, parameters)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+..\.venv\Lib\site-packages\aiosqlite\core.py:122: in _execute
+    return await future
+           ^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+self = <Connection(Thread-2268, stopped 10080)>
+
+    def run(self) -> None:
+        """
+        Execute function calls on a separate thread.
+    
+        :meta private:
+        """
+        while True:
+            # Continues running until all queue items are processed,
+            # even after connection is closed (so we can finalize all
+            # futures)
+    
+            tx_item = self._tx.get()
+            if tx_item is _STOP_RUNNING_SENTINEL:
+                break
+    
+            future, function = tx_item
+    
+            try:
+                LOG.debug("executing %s", function)
+>               result = function()
+                         ^^^^^^^^^^
+E               sqlite3.OperationalError: no such table: queued_detections
+
+..\.venv\Lib\site-packages\aiosqlite\core.py:105: OperationalError
+_____________________ test_blackout_reactivation_workflow _____________________
+
+client = <httpx.AsyncClient object at 0x0000020E70F9DA50>
+test_image_path = 'C:\\Users\\samue\\repos\\SentinelV2\\SentinelV2\\edge-inference\\tests\\fixtures\\test_image.jpg'
+
+    @pytest.mark.asyncio
+    async def test_blackout_reactivation_workflow(client, test_image_path):
+        """Test activating blackout multiple times in sequence"""
+        # First blackout cycle
+        await client.post("/blackout/activate")
+    
+        with open(test_image_path, 'rb') as f:
+            files = {"file": ("test1.jpg", f, "image/jpeg")}
+>           await client.post("/detect", files=files)
+
+tests\test_e2e.py:137: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+..\.venv\Lib\site-packages\httpx\_client.py:1859: in post
+    return await self.request(
+..\.venv\Lib\site-packages\httpx\_client.py:1540: in request
+    return await self.send(request, auth=auth, follow_redirects=follow_redirects)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+..\.venv\Lib\site-packages\httpx\_client.py:1629: in send
+    response = await self._send_handling_auth(
+..\.venv\Lib\site-packages\httpx\_client.py:1657: in _send_handling_auth
+    response = await self._send_handling_redirects(
+..\.venv\Lib\site-packages\httpx\_client.py:1694: in _send_handling_redirects
+    response = await self._send_single_request(request)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+..\.venv\Lib\site-packages\httpx\_client.py:1730: in _send_single_request
+    response = await transport.handle_async_request(request)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+..\.venv\Lib\site-packages\httpx\_transports\asgi.py:170: in handle_async_request
+    await self.app(scope, receive, send)
+..\.venv\Lib\site-packages\fastapi\applications.py:1054: in __call__
+    await super().__call__(scope, receive, send)
+..\.venv\Lib\site-packages\starlette\applications.py:123: in __call__
+    await self.middleware_stack(scope, receive, send)
+..\.venv\Lib\site-packages\starlette\middleware\errors.py:186: in __call__
+    raise exc
+..\.venv\Lib\site-packages\starlette\middleware\errors.py:164: in __call__
+    await self.app(scope, receive, _send)
+..\.venv\Lib\site-packages\starlette\middleware\exceptions.py:65: in __call__
+    await wrap_app_handling_exceptions(self.app, conn)(scope, receive, send)
+..\.venv\Lib\site-packages\starlette\_exception_handler.py:64: in wrapped_app
+    raise exc
+..\.venv\Lib\site-packages\starlette\_exception_handler.py:53: in wrapped_app
+    await app(scope, receive, sender)
+..\.venv\Lib\site-packages\starlette\routing.py:756: in __call__
+    await self.middleware_stack(scope, receive, send)
+..\.venv\Lib\site-packages\starlette\routing.py:776: in app
+    await route.handle(scope, receive, send)
+..\.venv\Lib\site-packages\starlette\routing.py:297: in handle
+    await self.app(scope, receive, send)
+..\.venv\Lib\site-packages\starlette\routing.py:77: in app
+    await wrap_app_handling_exceptions(app, request)(scope, receive, send)
+..\.venv\Lib\site-packages\starlette\_exception_handler.py:64: in wrapped_app
+    raise exc
+..\.venv\Lib\site-packages\starlette\_exception_handler.py:53: in wrapped_app
+    await app(scope, receive, sender)
+..\.venv\Lib\site-packages\starlette\routing.py:72: in app
+    response = await func(request)
+               ^^^^^^^^^^^^^^^^^^^
+..\.venv\Lib\site-packages\fastapi\routing.py:278: in app
+    raw_response = await run_endpoint_function(
+..\.venv\Lib\site-packages\fastapi\routing.py:191: in run_endpoint_function
+    return await dependant.call(**values)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+src\main.py:129: in detect
+    await blackout.queue_detection(message)
+src\blackout.py:108: in queue_detection
+    await db.execute(
+..\.venv\Lib\site-packages\aiosqlite\core.py:183: in execute
+    cursor = await self._execute(self._conn.execute, sql, parameters)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+..\.venv\Lib\site-packages\aiosqlite\core.py:122: in _execute
+    return await future
+           ^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+self = <Connection(Thread-2269, stopped 35936)>
+
+    def run(self) -> None:
+        """
+        Execute function calls on a separate thread.
+    
+        :meta private:
+        """
+        while True:
+            # Continues running until all queue items are processed,
+            # even after connection is closed (so we can finalize all
+            # futures)
+    
+            tx_item = self._tx.get()
+            if tx_item is _STOP_RUNNING_SENTINEL:
+                break
+    
+            future, function = tx_item
+    
+            try:
+                LOG.debug("executing %s", function)
+>               result = function()
+                         ^^^^^^^^^^
+E               sqlite3.OperationalError: no such table: queued_detections
+
+..\.venv\Lib\site-packages\aiosqlite\core.py:105: OperationalError
+_______________________ test_custom_node_id_propagation _______________________
+
+client = <httpx.AsyncClient object at 0x0000020E6E33B390>
+test_image_path = 'C:\\Users\\samue\\repos\\SentinelV2\\SentinelV2\\edge-inference\\tests\\fixtures\\test_image.jpg'
+
+    @pytest.mark.asyncio
+    async def test_custom_node_id_propagation(client, test_image_path):
+        """Test custom node ID is properly propagated through the system"""
+        custom_id = "arctic-sentinel-99"
+    
+        with open(test_image_path, 'rb') as f:
+            files = {"file": ("test.jpg", f, "image/jpeg")}
+>           response = await client.post(f"/detect?node_id={custom_id}", files=files)
+                       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+tests\test_e2e.py:165: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+..\.venv\Lib\site-packages\httpx\_client.py:1859: in post
+    return await self.request(
+..\.venv\Lib\site-packages\httpx\_client.py:1540: in request
+    return await self.send(request, auth=auth, follow_redirects=follow_redirects)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+..\.venv\Lib\site-packages\httpx\_client.py:1629: in send
+    response = await self._send_handling_auth(
+..\.venv\Lib\site-packages\httpx\_client.py:1657: in _send_handling_auth
+    response = await self._send_handling_redirects(
+..\.venv\Lib\site-packages\httpx\_client.py:1694: in _send_handling_redirects
+    response = await self._send_single_request(request)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+..\.venv\Lib\site-packages\httpx\_client.py:1730: in _send_single_request
+    response = await transport.handle_async_request(request)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+..\.venv\Lib\site-packages\httpx\_transports\asgi.py:170: in handle_async_request
+    await self.app(scope, receive, send)
+..\.venv\Lib\site-packages\fastapi\applications.py:1054: in __call__
+    await super().__call__(scope, receive, send)
+..\.venv\Lib\site-packages\starlette\applications.py:123: in __call__
+    await self.middleware_stack(scope, receive, send)
+..\.venv\Lib\site-packages\starlette\middleware\errors.py:186: in __call__
+    raise exc
+..\.venv\Lib\site-packages\starlette\middleware\errors.py:164: in __call__
+    await self.app(scope, receive, _send)
+..\.venv\Lib\site-packages\starlette\middleware\exceptions.py:65: in __call__
+    await wrap_app_handling_exceptions(self.app, conn)(scope, receive, send)
+..\.venv\Lib\site-packages\starlette\_exception_handler.py:64: in wrapped_app
+    raise exc
+..\.venv\Lib\site-packages\starlette\_exception_handler.py:53: in wrapped_app
+    await app(scope, receive, sender)
+..\.venv\Lib\site-packages\starlette\routing.py:756: in __call__
+    await self.middleware_stack(scope, receive, send)
+..\.venv\Lib\site-packages\starlette\routing.py:776: in app
+    await route.handle(scope, receive, send)
+..\.venv\Lib\site-packages\starlette\routing.py:297: in handle
+    await self.app(scope, receive, send)
+..\.venv\Lib\site-packages\starlette\routing.py:77: in app
+    await wrap_app_handling_exceptions(app, request)(scope, receive, send)
+..\.venv\Lib\site-packages\starlette\_exception_handler.py:64: in wrapped_app
+    raise exc
+..\.venv\Lib\site-packages\starlette\_exception_handler.py:53: in wrapped_app
+    await app(scope, receive, sender)
+..\.venv\Lib\site-packages\starlette\routing.py:72: in app
+    response = await func(request)
+               ^^^^^^^^^^^^^^^^^^^
+..\.venv\Lib\site-packages\fastapi\routing.py:278: in app
+    raw_response = await run_endpoint_function(
+..\.venv\Lib\site-packages\fastapi\routing.py:191: in run_endpoint_function
+    return await dependant.call(**values)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+src\main.py:129: in detect
+    await blackout.queue_detection(message)
+src\blackout.py:108: in queue_detection
+    await db.execute(
+..\.venv\Lib\site-packages\aiosqlite\core.py:183: in execute
+    cursor = await self._execute(self._conn.execute, sql, parameters)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+..\.venv\Lib\site-packages\aiosqlite\core.py:122: in _execute
+    return await future
+           ^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+self = <Connection(Thread-2270, stopped 16624)>
+
+    def run(self) -> None:
+        """
+        Execute function calls on a separate thread.
+    
+        :meta private:
+        """
+        while True:
+            # Continues running until all queue items are processed,
+            # even after connection is closed (so we can finalize all
+            # futures)
+    
+            tx_item = self._tx.get()
+            if tx_item is _STOP_RUNNING_SENTINEL:
+                break
+    
+            future, function = tx_item
+    
+            try:
+                LOG.debug("executing %s", function)
+>               result = function()
+                         ^^^^^^^^^^
+E               sqlite3.OperationalError: no such table: queued_detections
+
+..\.venv\Lib\site-packages\aiosqlite\core.py:105: OperationalError
+________________________ test_error_recovery_workflow _________________________
+
+client = <httpx.AsyncClient object at 0x0000020E710A0F90>
+test_image_path = 'C:\\Users\\samue\\repos\\SentinelV2\\SentinelV2\\edge-inference\\tests\\fixtures\\test_image.jpg'
+
+    @pytest.mark.asyncio
+    async def test_error_recovery_workflow(client, test_image_path):
+        """Test system recovers gracefully from errors"""
+        # Test 1: Invalid file type
+        invalid_response = await client.post(
+            "/detect",
+            files={"file": ("test.txt", b"not an image", "text/plain")}
+        )
+        assert invalid_response.status_code == 400
+    
+        # Test 2: System still works after error
+        with open(test_image_path, 'rb') as f:
+            files = {"file": ("test.jpg", f, "image/jpeg")}
+>           valid_response = await client.post("/detect", files=files)
+                             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+tests\test_e2e.py:197: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+..\.venv\Lib\site-packages\httpx\_client.py:1859: in post
+    return await self.request(
+..\.venv\Lib\site-packages\httpx\_client.py:1540: in request
+    return await self.send(request, auth=auth, follow_redirects=follow_redirects)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+..\.venv\Lib\site-packages\httpx\_client.py:1629: in send
+    response = await self._send_handling_auth(
+..\.venv\Lib\site-packages\httpx\_client.py:1657: in _send_handling_auth
+    response = await self._send_handling_redirects(
+..\.venv\Lib\site-packages\httpx\_client.py:1694: in _send_handling_redirects
+    response = await self._send_single_request(request)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+..\.venv\Lib\site-packages\httpx\_client.py:1730: in _send_single_request
+    response = await transport.handle_async_request(request)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+..\.venv\Lib\site-packages\httpx\_transports\asgi.py:170: in handle_async_request
+    await self.app(scope, receive, send)
+..\.venv\Lib\site-packages\fastapi\applications.py:1054: in __call__
+    await super().__call__(scope, receive, send)
+..\.venv\Lib\site-packages\starlette\applications.py:123: in __call__
+    await self.middleware_stack(scope, receive, send)
+..\.venv\Lib\site-packages\starlette\middleware\errors.py:186: in __call__
+    raise exc
+..\.venv\Lib\site-packages\starlette\middleware\errors.py:164: in __call__
+    await self.app(scope, receive, _send)
+..\.venv\Lib\site-packages\starlette\middleware\exceptions.py:65: in __call__
+    await wrap_app_handling_exceptions(self.app, conn)(scope, receive, send)
+..\.venv\Lib\site-packages\starlette\_exception_handler.py:64: in wrapped_app
+    raise exc
+..\.venv\Lib\site-packages\starlette\_exception_handler.py:53: in wrapped_app
+    await app(scope, receive, sender)
+..\.venv\Lib\site-packages\starlette\routing.py:756: in __call__
+    await self.middleware_stack(scope, receive, send)
+..\.venv\Lib\site-packages\starlette\routing.py:776: in app
+    await route.handle(scope, receive, send)
+..\.venv\Lib\site-packages\starlette\routing.py:297: in handle
+    await self.app(scope, receive, send)
+..\.venv\Lib\site-packages\starlette\routing.py:77: in app
+    await wrap_app_handling_exceptions(app, request)(scope, receive, send)
+..\.venv\Lib\site-packages\starlette\_exception_handler.py:64: in wrapped_app
+    raise exc
+..\.venv\Lib\site-packages\starlette\_exception_handler.py:53: in wrapped_app
+    await app(scope, receive, sender)
+..\.venv\Lib\site-packages\starlette\routing.py:72: in app
+    response = await func(request)
+               ^^^^^^^^^^^^^^^^^^^
+..\.venv\Lib\site-packages\fastapi\routing.py:278: in app
+    raw_response = await run_endpoint_function(
+..\.venv\Lib\site-packages\fastapi\routing.py:191: in run_endpoint_function
+    return await dependant.call(**values)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+src\main.py:129: in detect
+    await blackout.queue_detection(message)
+src\blackout.py:108: in queue_detection
+    await db.execute(
+..\.venv\Lib\site-packages\aiosqlite\core.py:183: in execute
+    cursor = await self._execute(self._conn.execute, sql, parameters)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+..\.venv\Lib\site-packages\aiosqlite\core.py:122: in _execute
+    return await future
+           ^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+self = <Connection(Thread-2271, stopped 13204)>
+
+    def run(self) -> None:
+        """
+        Execute function calls on a separate thread.
+    
+        :meta private:
+        """
+        while True:
+            # Continues running until all queue items are processed,
+            # even after connection is closed (so we can finalize all
+            # futures)
+    
+            tx_item = self._tx.get()
+            if tx_item is _STOP_RUNNING_SENTINEL:
+                break
+    
+            future, function = tx_item
+    
+            try:
+                LOG.debug("executing %s", function)
+>               result = function()
+                         ^^^^^^^^^^
+E               sqlite3.OperationalError: no such table: queued_detections
+
+..\.venv\Lib\site-packages\aiosqlite\core.py:105: OperationalError
+__________________ test_blackout_already_active_idempotency ___________________
+
+client = <httpx.AsyncClient object at 0x0000020E71058B10>
+
+    @pytest.mark.asyncio
+    async def test_blackout_already_active_idempotency(client):
+        """Test activating blackout when already active is idempotent"""
+        # Activate blackout
+        response1 = await client.post("/blackout/activate")
+>       assert response1.json()["status"] == "activated"
+E       AssertionError: assert 'already_active' == 'activated'
+E         
+E         - activated
+E         + already_active
+
+tests\test_e2e.py:211: AssertionError
+___________________ test_blackout_deactivate_when_inactive ____________________
+
+client = <httpx.AsyncClient object at 0x0000020E70C25850>
+
+    @pytest.mark.asyncio
+    async def test_blackout_deactivate_when_inactive(client):
+        """Test deactivating blackout when not active"""
+>       response = await client.post("/blackout/deactivate")
+                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+tests\test_e2e.py:224: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+..\.venv\Lib\site-packages\httpx\_client.py:1859: in post
+    return await self.request(
+..\.venv\Lib\site-packages\httpx\_client.py:1540: in request
+    return await self.send(request, auth=auth, follow_redirects=follow_redirects)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+..\.venv\Lib\site-packages\httpx\_client.py:1629: in send
+    response = await self._send_handling_auth(
+..\.venv\Lib\site-packages\httpx\_client.py:1657: in _send_handling_auth
+    response = await self._send_handling_redirects(
+..\.venv\Lib\site-packages\httpx\_client.py:1694: in _send_handling_redirects
+    response = await self._send_single_request(request)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+..\.venv\Lib\site-packages\httpx\_client.py:1730: in _send_single_request
+    response = await transport.handle_async_request(request)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+..\.venv\Lib\site-packages\httpx\_transports\asgi.py:170: in handle_async_request
+    await self.app(scope, receive, send)
+..\.venv\Lib\site-packages\fastapi\applications.py:1054: in __call__
+    await super().__call__(scope, receive, send)
+..\.venv\Lib\site-packages\starlette\applications.py:123: in __call__
+    await self.middleware_stack(scope, receive, send)
+..\.venv\Lib\site-packages\starlette\middleware\errors.py:186: in __call__
+    raise exc
+..\.venv\Lib\site-packages\starlette\middleware\errors.py:164: in __call__
+    await self.app(scope, receive, _send)
+..\.venv\Lib\site-packages\starlette\middleware\exceptions.py:65: in __call__
+    await wrap_app_handling_exceptions(self.app, conn)(scope, receive, send)
+..\.venv\Lib\site-packages\starlette\_exception_handler.py:64: in wrapped_app
+    raise exc
+..\.venv\Lib\site-packages\starlette\_exception_handler.py:53: in wrapped_app
+    await app(scope, receive, sender)
+..\.venv\Lib\site-packages\starlette\routing.py:756: in __call__
+    await self.middleware_stack(scope, receive, send)
+..\.venv\Lib\site-packages\starlette\routing.py:776: in app
+    await route.handle(scope, receive, send)
+..\.venv\Lib\site-packages\starlette\routing.py:297: in handle
+    await self.app(scope, receive, send)
+..\.venv\Lib\site-packages\starlette\routing.py:77: in app
+    await wrap_app_handling_exceptions(app, request)(scope, receive, send)
+..\.venv\Lib\site-packages\starlette\_exception_handler.py:64: in wrapped_app
+    raise exc
+..\.venv\Lib\site-packages\starlette\_exception_handler.py:53: in wrapped_app
+    await app(scope, receive, sender)
+..\.venv\Lib\site-packages\starlette\routing.py:72: in app
+    response = await func(request)
+               ^^^^^^^^^^^^^^^^^^^
+..\.venv\Lib\site-packages\fastapi\routing.py:278: in app
+    raw_response = await run_endpoint_function(
+..\.venv\Lib\site-packages\fastapi\routing.py:191: in run_endpoint_function
+    return await dependant.call(**values)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+src\main.py:169: in deactivate_blackout
+    queued = await blackout.deactivate()
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+src\blackout.py:79: in deactivate
+    detections = await self.get_queued_detections()
+                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+src\blackout.py:129: in get_queued_detections
+    cursor = await db.execute(
+..\.venv\Lib\site-packages\aiosqlite\core.py:183: in execute
+    cursor = await self._execute(self._conn.execute, sql, parameters)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+..\.venv\Lib\site-packages\aiosqlite\core.py:122: in _execute
+    return await future
+           ^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+self = <Connection(Thread-2272, stopped 29480)>
+
+    def run(self) -> None:
+        """
+        Execute function calls on a separate thread.
+    
+        :meta private:
+        """
+        while True:
+            # Continues running until all queue items are processed,
+            # even after connection is closed (so we can finalize all
+            # futures)
+    
+            tx_item = self._tx.get()
+            if tx_item is _STOP_RUNNING_SENTINEL:
+                break
+    
+            future, function = tx_item
+    
+            try:
+                LOG.debug("executing %s", function)
+>               result = function()
+                         ^^^^^^^^^^
+E               sqlite3.OperationalError: no such table: queued_detections
+
+..\.venv\Lib\site-packages\aiosqlite\core.py:105: OperationalError
+___________________ test_full_arctic_deployment_simulation ____________________
+
+client = <httpx.AsyncClient object at 0x0000020E70F14950>
+test_image_path = 'C:\\Users\\samue\\repos\\SentinelV2\\SentinelV2\\edge-inference\\tests\\fixtures\\test_image.jpg'
+
+    @pytest.mark.asyncio
+    async def test_full_arctic_deployment_simulation(client, test_image_path):
+        """
+        Simulate a complete Arctic deployment scenario:
+        1. Node comes online
+        2. Performs normal detections
+        3. Enters blackout mode (covert operation)
+        4. Performs detections during blackout
+        5. Exits blackout and transmits queued data
+        """
+        # Phase 1: Node initialization
+        health = await client.get("/health")
+        assert health.json()["status"] == "healthy"
+    
+        root = await client.get("/")
+        assert "Sentinel" in root.json()["service"]
+    
+        # Phase 2: Normal operations (3 detections)
+        normal_detections = []
+        for i in range(3):
+            with open(test_image_path, 'rb') as f:
+                files = {"file": (f"normal_{i}.jpg", f, "image/jpeg")}
+>               response = await client.post(
+                    "/detect?node_id=arctic-base-01",
+                    files=files
+                )
+
+tests\test_e2e.py:250: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+..\.venv\Lib\site-packages\httpx\_client.py:1859: in post
+    return await self.request(
+..\.venv\Lib\site-packages\httpx\_client.py:1540: in request
+    return await self.send(request, auth=auth, follow_redirects=follow_redirects)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+..\.venv\Lib\site-packages\httpx\_client.py:1629: in send
+    response = await self._send_handling_auth(
+..\.venv\Lib\site-packages\httpx\_client.py:1657: in _send_handling_auth
+    response = await self._send_handling_redirects(
+..\.venv\Lib\site-packages\httpx\_client.py:1694: in _send_handling_redirects
+    response = await self._send_single_request(request)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+..\.venv\Lib\site-packages\httpx\_client.py:1730: in _send_single_request
+    response = await transport.handle_async_request(request)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+..\.venv\Lib\site-packages\httpx\_transports\asgi.py:170: in handle_async_request
+    await self.app(scope, receive, send)
+..\.venv\Lib\site-packages\fastapi\applications.py:1054: in __call__
+    await super().__call__(scope, receive, send)
+..\.venv\Lib\site-packages\starlette\applications.py:123: in __call__
+    await self.middleware_stack(scope, receive, send)
+..\.venv\Lib\site-packages\starlette\middleware\errors.py:186: in __call__
+    raise exc
+..\.venv\Lib\site-packages\starlette\middleware\errors.py:164: in __call__
+    await self.app(scope, receive, _send)
+..\.venv\Lib\site-packages\starlette\middleware\exceptions.py:65: in __call__
+    await wrap_app_handling_exceptions(self.app, conn)(scope, receive, send)
+..\.venv\Lib\site-packages\starlette\_exception_handler.py:64: in wrapped_app
+    raise exc
+..\.venv\Lib\site-packages\starlette\_exception_handler.py:53: in wrapped_app
+    await app(scope, receive, sender)
+..\.venv\Lib\site-packages\starlette\routing.py:756: in __call__
+    await self.middleware_stack(scope, receive, send)
+..\.venv\Lib\site-packages\starlette\routing.py:776: in app
+    await route.handle(scope, receive, send)
+..\.venv\Lib\site-packages\starlette\routing.py:297: in handle
+    await self.app(scope, receive, send)
+..\.venv\Lib\site-packages\starlette\routing.py:77: in app
+    await wrap_app_handling_exceptions(app, request)(scope, receive, send)
+..\.venv\Lib\site-packages\starlette\_exception_handler.py:64: in wrapped_app
+    raise exc
+..\.venv\Lib\site-packages\starlette\_exception_handler.py:53: in wrapped_app
+    await app(scope, receive, sender)
+..\.venv\Lib\site-packages\starlette\routing.py:72: in app
+    response = await func(request)
+               ^^^^^^^^^^^^^^^^^^^
+..\.venv\Lib\site-packages\fastapi\routing.py:278: in app
+    raw_response = await run_endpoint_function(
+..\.venv\Lib\site-packages\fastapi\routing.py:191: in run_endpoint_function
+    return await dependant.call(**values)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+src\main.py:129: in detect
+    await blackout.queue_detection(message)
+src\blackout.py:108: in queue_detection
+    await db.execute(
+..\.venv\Lib\site-packages\aiosqlite\core.py:183: in execute
+    cursor = await self._execute(self._conn.execute, sql, parameters)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+..\.venv\Lib\site-packages\aiosqlite\core.py:122: in _execute
+    return await future
+           ^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+self = <Connection(Thread-2273, stopped 36084)>
+
+    def run(self) -> None:
+        """
+        Execute function calls on a separate thread.
+    
+        :meta private:
+        """
+        while True:
+            # Continues running until all queue items are processed,
+            # even after connection is closed (so we can finalize all
+            # futures)
+    
+            tx_item = self._tx.get()
+            if tx_item is _STOP_RUNNING_SENTINEL:
+                break
+    
+            future, function = tx_item
+    
+            try:
+                LOG.debug("executing %s", function)
+>               result = function()
+                         ^^^^^^^^^^
+E               sqlite3.OperationalError: no such table: queued_detections
+
+..\.venv\Lib\site-packages\aiosqlite\core.py:105: OperationalError
+_________________________ test_component_integration __________________________
+
+    @pytest.mark.asyncio
+    async def test_component_integration():
+        """Test direct integration between components without HTTP layer"""
+        # Test 1: Inference \u2192 Telemetry integration
+        engine = InferenceEngine()
+        telemetry = TelemetryGenerator(base_lat=75.0, base_lon=-110.0)
+    
+        test_image = Path(__file__).parent / "fixtures" / "test_image.jpg"
+    
+        # Run inference
+        inference_result = engine.detect(str(test_image))
+        assert "detections" in inference_result
+    
+        # Generate telemetry message
+        message = telemetry.create_detection_message(
+            inference_result,
+            node_id="integration-test-01"
+        )
+    
+        assert message["node_id"] == "integration-test-01"
+        assert 60.0 <= message["location"]["latitude"] <= 85.0
+        assert message["detection_count"] == inference_result["count"]
+        assert message["model"] == inference_result["model"]
+    
+        # Test 2: Blackout controller integration
+>       controller = BlackoutController(db_path=":memory:")  # Use in-memory DB
+                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E       TypeError: BlackoutController.__init__() missing 1 required positional argument: 'node_id'
+
+tests\test_e2e.py:323: TypeError
+---------------------------- Captured stdout call -----------------------------
+[31m[1mrequirements:[0m Ultralytics requirements ['gitpython>=3.1.30', 'setuptools>=70.0.0'] not found, attempting AutoUpdate...
+Defaulting to user installation because normal site-packages is not writeable
+Requirement already satisfied: gitpython>=3.1.30 in c:\users\samue\appdata\roaming\python\python312\site-packages (3.1.44)
+Requirement already satisfied: setuptools>=70.0.0 in c:\users\samue\appdata\roaming\python\python312\site-packages (75.6.0)
+Requirement already satisfied: gitdb<5,>=4.0.1 in c:\users\samue\appdata\roaming\python\python312\site-packages (from gitpython>=3.1.30) (4.0.12)
+Requirement already satisfied: smmap<6,>=3.0.1 in c:\users\samue\appdata\roaming\python\python312\site-packages (from gitdb<5,>=4.0.1->gitpython>=3.1.30) (5.0.2)
+
+[notice] A new release of pip is available: 25.2 -> 25.3
+[notice] To update, run: python.exe -m pip install --upgrade pip
+
+[31m[1mrequirements:[0m AutoUpdate success  1.4s
+WARNING [31m[1mrequirements:[0m [1mRestart runtime or rerun command for updates to take effect[0m
+
+---------------------------- Captured stderr call -----------------------------
+YOLOv5  2025-11-18 Python-3.11.9 torch-2.1.2+cpu CPU
+
+Fusing layers... 
+YOLOv5n summary: 213 layers, 1867405 parameters, 0 gradients, 4.5 GFLOPs
+Adding AutoShape... 
+============================== warnings summary ===============================
+..\.venv\Lib\site-packages\starlette\formparsers.py:12
+  C:\Users\samue\repos\SentinelV2\SentinelV2\.venv\Lib\site-packages\starlette\formparsers.py:12: PendingDeprecationWarning: Please use `import python_multipart` instead.
+    import multipart
+
+src\main.py:42
+  C:\Users\samue\repos\SentinelV2\SentinelV2\edge-inference\src\main.py:42: DeprecationWarning: 
+          on_event is deprecated, use lifespan event handlers instead.
+  
+          Read more about it in the
+          [FastAPI docs for Lifespan Events](https://fastapi.tiangolo.com/advanced/events/).
+          
+    @app.on_event("startup")
+
+..\.venv\Lib\site-packages\fastapi\applications.py:4495
+  C:\Users\samue\repos\SentinelV2\SentinelV2\.venv\Lib\site-packages\fastapi\applications.py:4495: DeprecationWarning: 
+          on_event is deprecated, use lifespan event handlers instead.
+  
+          Read more about it in the
+          [FastAPI docs for Lifespan Events](https://fastapi.tiangolo.com/advanced/events/).
+          
+    return self.router.on_event(event_type)
+
+tests/test_api.py::test_health_endpoint
+  C:\Users\samue/.cache\torch\hub\ultralytics_yolov5_master\utils\plots.py:18: DeprecationWarning: Please import `gaussian_filter1d` from the `scipy.ndimage` namespace; the `scipy.ndimage.filters` namespace is deprecated and will be removed in SciPy 2.0.0.
+    from scipy.ndimage.filters import gaussian_filter1d
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+=============================== tests coverage ================================
+_______________ coverage: platform win32, python 3.11.9-final-0 _______________
+
+Name                        Stmts   Miss  Cover   Missing
+---------------------------------------------------------
+src\__init__.py                 0      0   100%
+src\blackout.py                80      6    92%   77, 179-183, 187
+src\burst_transmission.py      95     85    11%   46-141, 174-228
+src\config.py                  16      0   100%
+src\inference.py               46      6    87%   89, 96, 99, 105, 125-126
+src\main.py                    86     16    81%   45, 103, 118-119, 142-147, 167, 207-224
+src\schemas.py                 43      0   100%
+src\telemetry.py               23      0   100%
+---------------------------------------------------------
+TOTAL                         389    113    71%
+Coverage HTML written to dir htmlcov
+Required test coverage of 70% reached. Total coverage: 70.95%
+=========================== short test summary info ===========================
+FAILED tests/test_e2e.py::test_blackout_mode_complete_workflow - sqlite3.Oper...
+FAILED tests/test_e2e.py::test_blackout_reactivation_workflow - sqlite3.Opera...
+FAILED tests/test_e2e.py::test_custom_node_id_propagation - sqlite3.Operation...
+FAILED tests/test_e2e.py::test_error_recovery_workflow - sqlite3.OperationalE...
+FAILED tests/test_e2e.py::test_blackout_already_active_idempotency - Assertio...
+FAILED tests/test_e2e.py::test_blackout_deactivate_when_inactive - sqlite3.Op...
+FAILED tests/test_e2e.py::test_full_arctic_deployment_simulation - sqlite3.Op...
+FAILED tests/test_e2e.py::test_component_integration - TypeError: BlackoutCon...
+================== 8 failed, 75 passed, 4 warnings in 50.23s ==================

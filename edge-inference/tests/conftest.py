@@ -83,7 +83,19 @@ async def client():
     if blackout_db.exists():
         blackout_db.unlink()
 
-    async with AsyncClient(app=app, base_url="http://test") as ac:
+    from httpx import ASGITransport
+    
+    # Initialize the database for the global blackout controller used by the app
+    from src.main import blackout
+    # Reset state since the object is global and persists across tests
+    blackout._initialized = False
+    blackout.is_active = False
+    blackout.blackout_id = None
+    blackout.activated_at = None
+    
+    await blackout._init_db()
+    
+    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as ac:
         yield ac
 
     # Cleanup after tests
@@ -102,7 +114,7 @@ async def blackout_controller():
     db_path = db_file.name
     db_file.close()
 
-    yield BlackoutController(db_path=db_path)
+    yield BlackoutController(node_id="test-node", db_path=db_path)
 
     # Cleanup
     try:

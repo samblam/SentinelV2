@@ -78,6 +78,11 @@ class BlackoutController:
 
         detections = await self.get_queued_detections()
 
+        # Mark as transmitted since we are returning them for burst transmission
+        if detections:
+            ids = [d['id'] for d in detections]
+            await self.mark_transmitted(ids)
+
         logger.info(f"[BLACKOUT] Node {self.node_id} exiting blackout mode")
         logger.info(f"[BLACKOUT] Transmitting {len(detections)} queued detections")
 

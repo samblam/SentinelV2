@@ -1,0 +1,206 @@
+============================= test session starts =============================
+platform win32 -- Python 3.11.9, pytest-9.0.1, pluggy-1.6.0 -- C:\Users\samue\repos\SentinelV2\SentinelV2\.venv\Scripts\python.exe
+cachedir: .pytest_cache
+rootdir: C:\Users\samue\repos\SentinelV2\SentinelV2\edge-inference
+configfile: pytest.ini
+testpaths: tests
+plugins: anyio-4.11.0, asyncio-1.3.0, cov-7.0.0
+asyncio: mode=Mode.AUTO, debug=False, asyncio_default_fixture_loop_scope=None, asyncio_default_test_loop_scope=function
+collecting ... collected 83 items
+
+tests/test_api.py::test_root_endpoint PASSED                             [  1%]
+tests/test_api.py::test_health_endpoint PASSED                           [  2%]
+tests/test_api.py::test_detect_endpoint_requires_image PASSED            [  3%]
+tests/test_api.py::test_detect_endpoint_with_image PASSED                [  4%]
+tests/test_api.py::test_detect_endpoint_rejects_non_image PASSED         [  6%]
+tests/test_api.py::test_detect_endpoint_rejects_oversized_file PASSED    [  7%]
+tests/test_api.py::test_detect_endpoint_handles_corrupted_image PASSED   [  8%]
+tests/test_api.py::test_detect_endpoint_handles_text_as_image PASSED     [  9%]
+tests/test_api.py::test_detect_endpoint_preserves_file_extension PASSED  [ 10%]
+tests/test_api.py::test_detect_endpoint_custom_node_id PASSED            [ 12%]
+tests/test_api.py::test_blackout_activate_endpoint PASSED                [ 13%]
+tests/test_api.py::test_blackout_deactivate_endpoint PASSED              [ 14%]
+tests/test_api.py::test_blackout_status_endpoint PASSED                  [ 15%]
+tests/test_api.py::test_blackout_workflow PASSED                         [ 16%]
+tests/test_api.py::test_detect_performance PASSED                        [ 18%]
+tests/test_api.py::test_multiple_detections PASSED                       [ 19%]
+tests/test_blackout.py::test_blackout_activation PASSED                  [ 20%]
+tests/test_blackout.py::test_blackout_initial_state PASSED               [ 21%]
+tests/test_blackout.py::test_blackout_queues_detections PASSED           [ 22%]
+tests/test_blackout.py::test_blackout_deactivation_returns_queue PASSED  [ 24%]
+tests/test_blackout.py::test_blackout_deactivation_clears_queue PASSED   [ 25%]
+tests/test_blackout.py::test_blackout_multiple_detections PASSED         [ 26%]
+tests/test_blackout.py::test_blackout_persistence PASSED                 [ 27%]
+tests/test_blackout.py::test_blackout_queue_before_activation PASSED     [ 28%]
+tests/test_blackout.py::test_blackout_empty_queue PASSED                 [ 30%]
+tests/test_blackout.py::test_blackout_reactivation PASSED                [ 31%]
+tests/test_blackout.py::test_blackout_large_queue PASSED                 [ 32%]
+tests/test_blackout.py::test_blackout_very_large_queue PASSED            [ 33%]
+tests/test_e2e.py::test_complete_detection_workflow PASSED               [ 34%]
+tests/test_e2e.py::test_blackout_mode_complete_workflow PASSED           [ 36%]
+tests/test_e2e.py::test_concurrent_detections PASSED                     [ 37%]
+tests/test_e2e.py::test_blackout_reactivation_workflow PASSED            [ 38%]
+tests/test_e2e.py::test_custom_node_id_propagation PASSED                [ 39%]
+tests/test_e2e.py::test_error_recovery_workflow PASSED                   [ 40%]
+tests/test_e2e.py::test_blackout_already_active_idempotency PASSED       [ 42%]
+tests/test_e2e.py::test_blackout_deactivate_when_inactive PASSED         [ 43%]
+tests/test_e2e.py::test_full_arctic_deployment_simulation FAILED         [ 44%]
+tests/test_e2e.py::test_component_integration PASSED                     [ 45%]
+tests/test_inference.py::test_engine_initializes PASSED                  [ 46%]
+tests/test_inference.py::test_inference_returns_correct_schema PASSED    [ 48%]
+tests/test_inference.py::test_inference_performance PASSED               [ 49%]
+tests/test_inference.py::test_detection_format PASSED                    [ 50%]
+tests/test_inference.py::test_multiple_inferences[1] PASSED              [ 51%]
+tests/test_inference.py::test_multiple_inferences[2] PASSED              [ 53%]
+tests/test_inference.py::test_multiple_inferences[3] PASSED              [ 54%]
+tests/test_inference.py::test_inference_nonexistent_image PASSED         [ 55%]
+tests/test_inference.py::test_inference_corrupted_image PASSED           [ 56%]
+tests/test_inference.py::test_inference_invalid_file_type PASSED         [ 57%]
+tests/test_schemas.py::test_bbox_valid PASSED                            [ 59%]
+tests/test_schemas.py::test_bbox_type_coercion PASSED                    [ 60%]
+tests/test_schemas.py::test_bbox_invalid_type PASSED                     [ 61%]
+tests/test_schemas.py::test_bbox_missing_required_fields PASSED          [ 62%]
+tests/test_schemas.py::test_detection_valid PASSED                       [ 63%]
+tests/test_schemas.py::test_detection_with_alias PASSED                  [ 65%]
+tests/test_schemas.py::test_detection_confidence_bounds PASSED           [ 66%]
+tests/test_schemas.py::test_detection_confidence_out_of_bounds PASSED    [ 67%]
+tests/test_schemas.py::test_detection_missing_required_fields PASSED     [ 68%]
+tests/test_schemas.py::test_location_valid PASSED                        [ 69%]
+tests/test_schemas.py::test_location_extreme_values PASSED               [ 71%]
+tests/test_schemas.py::test_location_invalid_coordinates PASSED          [ 72%]
+tests/test_schemas.py::test_location_missing_required_fields PASSED      [ 73%]
+tests/test_schemas.py::test_detection_message_complete PASSED            [ 74%]
+tests/test_schemas.py::test_detection_message_empty_detections PASSED    [ 75%]
+tests/test_schemas.py::test_detection_message_multiple_detections PASSED [ 77%]
+tests/test_schemas.py::test_health_response_valid PASSED                 [ 78%]
+tests/test_schemas.py::test_health_response_with_gpu PASSED              [ 79%]
+tests/test_schemas.py::test_blackout_activate_response PASSED            [ 80%]
+tests/test_schemas.py::test_blackout_activate_response_already_active PASSED [ 81%]
+tests/test_schemas.py::test_blackout_deactivate_response PASSED          [ 83%]
+tests/test_schemas.py::test_blackout_deactivate_response_not_active PASSED [ 84%]
+tests/test_schemas.py::test_blackout_status_response_active PASSED       [ 85%]
+tests/test_schemas.py::test_blackout_status_response_inactive PASSED     [ 86%]
+tests/test_schemas.py::test_detection_message_json_serialization PASSED  [ 87%]
+tests/test_schemas.py::test_detection_message_from_dict PASSED           [ 89%]
+tests/test_telemetry.py::test_generates_arctic_coordinates PASSED        [ 90%]
+tests/test_telemetry.py::test_generates_unique_node_id PASSED            [ 91%]
+tests/test_telemetry.py::test_node_id_is_consistent PASSED               [ 92%]
+tests/test_telemetry.py::test_creates_detection_message PASSED           [ 93%]
+tests/test_telemetry.py::test_creates_message_with_empty_detections PASSED [ 95%]
+tests/test_telemetry.py::test_custom_node_id_override PASSED             [ 96%]
+tests/test_telemetry.py::test_custom_gps_override PASSED                 [ 97%]
+tests/test_telemetry.py::test_multiple_gps_generations_vary PASSED       [ 98%]
+tests/test_telemetry.py::test_base_coordinates_configurable PASSED       [100%]
+
+================================== FAILURES ===================================
+___________________ test_full_arctic_deployment_simulation ____________________
+
+client = <httpx.AsyncClient object at 0x000002C8DABE5350>
+test_image_path = 'C:\\Users\\samue\\repos\\SentinelV2\\SentinelV2\\edge-inference\\tests\\fixtures\\test_image.jpg'
+
+    @pytest.mark.asyncio
+    async def test_full_arctic_deployment_simulation(client, test_image_path):
+        """
+        Simulate a complete Arctic deployment scenario:
+        1. Node comes online
+        2. Performs normal detections
+        3. Enters blackout mode (covert operation)
+        4. Performs detections during blackout
+        5. Exits blackout and transmits queued data
+        """
+        # Phase 1: Node initialization
+        health = await client.get("/health")
+        assert health.json()["status"] == "healthy"
+    
+        root = await client.get("/")
+        assert "Sentinel" in root.json()["service"]
+    
+        # Phase 2: Normal operations (3 detections)
+        normal_detections = []
+        for i in range(3):
+            with open(test_image_path, 'rb') as f:
+                files = {"file": (f"normal_{i}.jpg", f, "image/jpeg")}
+                response = await client.post(
+                    "/detect?node_id=arctic-base-01",
+                    files=files
+                )
+            assert response.status_code == 200
+            normal_detections.append(response.json())
+    
+        # Verify normal detections have Arctic GPS
+        for detection in normal_detections:
+            assert 60.0 <= detection["location"]["latitude"] <= 85.0
+            assert detection["node_id"] == "arctic-base-01"
+    
+        # Phase 3: Enter blackout mode
+        await client.post("/blackout/activate")
+    
+        # Phase 4: Covert operations (5 detections queued)
+        for i in range(5):
+            with open(test_image_path, 'rb') as f:
+                files = {"file": (f"covert_{i}.jpg", f, "image/jpeg")}
+                response = await client.post(
+                    "/detect?node_id=arctic-base-01",
+                    files=files
+                )
+            assert response.json()["status"] == "queued"
+    
+        # Phase 5: Exit blackout and verify queued transmissions
+        deactivate = await client.post("/blackout/deactivate")
+        assert deactivate.json()["count"] == 5
+    
+        queued = deactivate.json()["queued_detections"]
+        for detection in queued:
+            assert detection["detection"]["node_id"] == "arctic-base-01"
+>           assert "detections" in detection
+E           AssertionError: assert 'detections' in {'detection': {'detection_count': 0, 'detections': [], 'inference_time_ms': 42.61, 'location': {'accuracy_m': 5.37, 'altitude_m': 46.85, 'latitude': 69.992898, 'longitude': -99.996367}, ...}, 'id': 1, 'queued_at': '2025-11-19T17:09:11.509282+00:00'}
+
+tests\test_e2e.py:282: AssertionError
+============================== warnings summary ===============================
+..\.venv\Lib\site-packages\starlette\formparsers.py:12
+  C:\Users\samue\repos\SentinelV2\SentinelV2\.venv\Lib\site-packages\starlette\formparsers.py:12: PendingDeprecationWarning: Please use `import python_multipart` instead.
+    import multipart
+
+src\main.py:42
+  C:\Users\samue\repos\SentinelV2\SentinelV2\edge-inference\src\main.py:42: DeprecationWarning: 
+          on_event is deprecated, use lifespan event handlers instead.
+  
+          Read more about it in the
+          [FastAPI docs for Lifespan Events](https://fastapi.tiangolo.com/advanced/events/).
+          
+    @app.on_event("startup")
+
+..\.venv\Lib\site-packages\fastapi\applications.py:4495
+  C:\Users\samue\repos\SentinelV2\SentinelV2\.venv\Lib\site-packages\fastapi\applications.py:4495: DeprecationWarning: 
+          on_event is deprecated, use lifespan event handlers instead.
+  
+          Read more about it in the
+          [FastAPI docs for Lifespan Events](https://fastapi.tiangolo.com/advanced/events/).
+          
+    return self.router.on_event(event_type)
+
+tests/test_api.py::test_health_endpoint
+  C:\Users\samue/.cache\torch\hub\ultralytics_yolov5_master\utils\plots.py:18: DeprecationWarning: Please import `gaussian_filter1d` from the `scipy.ndimage` namespace; the `scipy.ndimage.filters` namespace is deprecated and will be removed in SciPy 2.0.0.
+    from scipy.ndimage.filters import gaussian_filter1d
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+=============================== tests coverage ================================
+_______________ coverage: platform win32, python 3.11.9-final-0 _______________
+
+Name                        Stmts   Miss  Cover   Missing
+---------------------------------------------------------
+src\__init__.py                 0      0   100%
+src\blackout.py                80      6    92%   77, 179-183, 187
+src\burst_transmission.py      95     85    11%   46-141, 174-228
+src\config.py                  16      0   100%
+src\inference.py               46      6    87%   89, 96, 99, 105, 125-126
+src\main.py                    86     15    83%   45, 103, 118-119, 142-147, 207-224
+src\schemas.py                 43      0   100%
+src\telemetry.py               23      0   100%
+---------------------------------------------------------
+TOTAL                         389    112    71%
+Coverage HTML written to dir htmlcov
+Required test coverage of 70% reached. Total coverage: 71.21%
+=========================== short test summary info ===========================
+FAILED tests/test_e2e.py::test_full_arctic_deployment_simulation - AssertionE...
+================== 1 failed, 82 passed, 4 warnings in 36.70s ==================

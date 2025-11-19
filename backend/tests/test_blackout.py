@@ -42,7 +42,7 @@ class TestBlackoutActivation:
         )
 
         # Mock database query
-        mock_result = AsyncMock()
+        mock_result = MagicMock()
         mock_result.scalar_one_or_none.return_value = node
         mock_db.execute.return_value = mock_result
 
@@ -71,7 +71,7 @@ class TestBlackoutActivation:
     async def test_activate_blackout_node_not_found(self, coordinator, mock_db):
         """Test activation fails when node doesn't exist."""
         # Mock database query - node not found
-        mock_result = AsyncMock()
+        mock_result = MagicMock()
         mock_result.scalar_one_or_none.return_value = None
         mock_db.execute.return_value = mock_result
 
@@ -90,7 +90,7 @@ class TestBlackoutActivation:
         )
 
         # Mock database query
-        mock_result = AsyncMock()
+        mock_result = MagicMock()
         mock_result.scalar_one_or_none.return_value = node
         mock_db.execute.return_value = mock_result
 
@@ -121,10 +121,10 @@ class TestBlackoutDeactivation:
         )
 
         # Mock database queries
-        mock_node_result = AsyncMock()
+        mock_node_result = MagicMock()
         mock_node_result.scalar_one_or_none.return_value = node
 
-        mock_event_result = AsyncMock()
+        mock_event_result = MagicMock()
         mock_event_result.scalar_one_or_none.return_value = event
 
         mock_db.execute.side_effect = [mock_node_result, mock_event_result]
@@ -158,7 +158,7 @@ class TestBlackoutDeactivation:
         )
 
         # Mock database query
-        mock_result = AsyncMock()
+        mock_result = MagicMock()
         mock_result.scalar_one_or_none.return_value = node
         mock_db.execute.return_value = mock_result
 
@@ -191,10 +191,10 @@ class TestBlackoutStatus:
         )
 
         # Mock database queries
-        mock_node_result = AsyncMock()
+        mock_node_result = MagicMock()
         mock_node_result.scalar_one_or_none.return_value = node
 
-        mock_event_result = AsyncMock()
+        mock_event_result = MagicMock()
         mock_event_result.scalar_one_or_none.return_value = event
 
         mock_db.execute.side_effect = [mock_node_result, mock_event_result]
@@ -219,7 +219,7 @@ class TestBlackoutStatus:
         )
 
         # Mock database query
-        mock_result = AsyncMock()
+        mock_result = MagicMock()
         mock_result.scalar_one_or_none.return_value = node
         mock_db.execute.return_value = mock_result
 
@@ -253,7 +253,7 @@ class TestStuckNodeRecovery:
         )
 
         # Mock database query
-        mock_result = AsyncMock()
+        mock_result = MagicMock()
         mock_result.all.return_value = [(node, event)]
         mock_db.execute.return_value = mock_result
 
@@ -275,7 +275,7 @@ class TestStuckNodeRecovery:
     async def test_no_stuck_nodes(self, coordinator, mock_db):
         """Test when no nodes are stuck."""
         # Mock database query - no stuck nodes
-        mock_result = AsyncMock()
+        mock_result = MagicMock()
         mock_result.all.return_value = []
         mock_db.execute.return_value = mock_result
 
@@ -311,10 +311,10 @@ class TestDetectionCountUpdate:
         )
 
         # Mock database queries
-        mock_node_result = AsyncMock()
+        mock_node_result = MagicMock()
         mock_node_result.scalar_one_or_none.return_value = node
 
-        mock_event_result = AsyncMock()
+        mock_event_result = MagicMock()
         mock_event_result.scalar_one_or_none.return_value = event
 
         mock_db.execute.side_effect = [mock_node_result, mock_event_result]
@@ -352,10 +352,10 @@ class TestCompleteResumption:
         )
 
         # Mock database queries
-        mock_node_result = AsyncMock()
+        mock_node_result = MagicMock()
         mock_node_result.scalar_one_or_none.return_value = node
 
-        mock_event_result = AsyncMock()
+        mock_event_result = MagicMock()
         mock_event_result.scalar_one_or_none.return_value = event
 
         mock_db.execute.side_effect = [mock_node_result, mock_event_result]

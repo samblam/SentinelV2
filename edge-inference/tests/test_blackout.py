@@ -17,7 +17,7 @@ async def blackout_controller():
     temp_db = tempfile.NamedTemporaryFile(delete=False, suffix=".db")
     temp_db.close()
 
-    yield BlackoutController(db_path=temp_db.name)
+    yield BlackoutController(node_id="test-node", db_path=temp_db.name)
 
     # Cleanup
     if os.path.exists(temp_db.name):
@@ -56,8 +56,8 @@ async def test_blackout_queues_detections(blackout_controller):
 
     queued = await controller.get_queued_detections()
     assert len(queued) == 1
-    assert queued[0]["test"] == "data"
-    assert queued[0]["id"] == 1
+    assert queued[0]["detection"]["test"] == "data"
+    assert queued[0]["detection"]["id"] == 1
 
 
 @pytest.mark.asyncio
@@ -106,7 +106,7 @@ async def test_blackout_multiple_detections(blackout_controller):
 
     # Verify order is preserved
     for i, detection in enumerate(queued):
-        assert detection["id"] == i
+        assert detection["detection"]["id"] == i
 
 
 @pytest.mark.asyncio
@@ -119,11 +119,11 @@ async def test_blackout_persistence(blackout_controller):
     await controller.queue_detection({"persistent": "data"})
 
     # Create new controller instance with same database
-    new_controller = BlackoutController(db_path=str(db_path))
+    new_controller = BlackoutController(node_id="test-node", db_path=str(db_path))
     queued = await new_controller.get_queued_detections()
 
     assert len(queued) == 1
-    assert queued[0]["persistent"] == "data"
+    assert queued[0]["detection"]["persistent"] == "data"
 
 
 @pytest.mark.asyncio
@@ -165,7 +165,7 @@ async def test_blackout_reactivation(blackout_controller):
 
     queued = await controller.get_queued_detections()
     assert len(queued) == 1
-    assert queued[0]["cycle"] == 2
+    assert queued[0]["detection"]["cycle"] == 2
 
 
 @pytest.mark.asyncio
@@ -189,8 +189,8 @@ async def test_blackout_large_queue(blackout_controller):
     assert len(queued) == queue_size
 
     # Verify order is preserved
-    assert queued[0]["id"] == 0
-    assert queued[queue_size - 1]["id"] == queue_size - 1
+    assert queued[0]["detection"]["id"] == 0
+    assert queued[queue_size - 1]["detection"]["id"] == queue_size - 1
 
     # Test deactivation with large queue
     deactivated_detections = await controller.deactivate()
@@ -219,8 +219,8 @@ async def test_blackout_very_large_queue(blackout_controller):
     assert len(queued) == queue_size
 
     # Spot check first and last items
-    assert queued[0]["id"] == 0
-    assert queued[-1]["id"] == queue_size - 1
+    assert queued[0]["detection"]["id"] == 0
+    assert queued[-1]["detection"]["id"] == queue_size - 1
 
     # Deactivate and verify
     deactivated = await controller.deactivate()
