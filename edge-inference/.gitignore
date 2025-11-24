@@ -19,6 +19,8 @@ htmlcov/
 venv/
 ENV/
 env/
+.venv/
+.venv-e2e/
 
 # IDE
 .vscode/
