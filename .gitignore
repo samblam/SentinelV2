@@ -24,6 +24,10 @@ Thumbs.db
 .env.local
 *.log
 .venv
+.venv-e2e/
+venv/
+env/
+ENV/
 # Testing
 .coverage
 .pytest_cache/

@@ -52,12 +52,11 @@ class DetectionResponse(BaseModel):
 
 
 class BlackoutActivate(BaseModel):
-    """Blackout activation request."""
-    node_id: str
+    """Schema for activating blackout mode."""
     reason: Optional[str] = None
     operator_id: Optional[str] = None
 
 
 class BlackoutDeactivate(BaseModel):
-    """Blackout deactivation request."""
-    node_id: str
+    """Schema for deactivating blackout mode."""
+    pass

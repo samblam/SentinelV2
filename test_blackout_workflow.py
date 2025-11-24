@@ -20,9 +20,11 @@ from datetime import datetime, timezone, timedelta
 pytestmark = [pytest.mark.integration, pytest.mark.slow]
 
 
+import uuid
+
 BACKEND_URL = "http://localhost:8001"
 EDGE_URL = "http://localhost:8000"
-NODE_ID = "test-sentry-01"
+NODE_ID = f"test-sentry-{uuid.uuid4().hex[:8]}"
 
 
 async def wait_for_server(url: str, timeout: int = 30):
@@ -56,7 +58,7 @@ async def create_node(node_id: str):
 
         # Node doesn't exist, create it via heartbeat
         async with session.post(
-            f"{BACKEND_URL}/api/heartbeat",
+            f"{BACKEND_URL}/api/nodes/register",
             json={"node_id": node_id}
         ) as response:
             if response.status in [200, 201]:

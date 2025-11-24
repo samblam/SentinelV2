@@ -24,6 +24,7 @@ class Settings(BaseSettings):
     TAK_SERVER_ENABLED: bool = False  # Enable TAK server transmission
     TAK_SERVER_HOST: str = "localhost"
     TAK_SERVER_PORT: int = 8089
+    COT_TARGET_CLASSES: list[str] = ["vehicle"]  # Only send these classes to ATAK
 
     model_config = SettingsConfigDict(env_file=".env")
 

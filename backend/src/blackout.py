@@ -250,7 +250,12 @@ class BlackoutCoordinator:
         if not event:
             return {"status": "error", "message": "Node in covert status but no event found"}
 
-        duration = (datetime.now(timezone.utc) - event.activated_at).total_seconds()
+        # Ensure activated_at is timezone-aware
+        activated_at = event.activated_at
+        if activated_at.tzinfo is None:
+            activated_at = activated_at.replace(tzinfo=timezone.utc)
+
+        duration = (datetime.now(timezone.utc) - activated_at).total_seconds()
 
         return {
             "status": "active",

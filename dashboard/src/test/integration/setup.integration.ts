@@ -79,22 +79,28 @@ export const handlers = [
     return HttpResponse.json(mockNodes);
   }),
 
-  // Activate blackout
-  http.post('*/api/blackout/activate', async ({ request }) => {
-    const body = await request.json() as { node_id: string; reason?: string };
+  // Activate blackout (node-specific endpoint)
+  http.post('*/api/nodes/:nodeId/blackout/activate', async ({ params }) => {
+    const { nodeId } = params;
     return HttpResponse.json({
       status: 'activated',
-      node_id: body.node_id,
+      node_id: nodeId,
+      blackout_id: 1,
       activated_at: new Date().toISOString(),
     });
   }),
 
-  // Deactivate blackout
-  http.post('*/api/blackout/deactivate', async ({ request }) => {
-    const body = await request.json() as { node_id: string };
+  // Deactivate blackout (node-specific endpoint)
+  http.post('*/api/nodes/:nodeId/blackout/deactivate', async ({ params }) => {
+    const { nodeId } = params;
     return HttpResponse.json({
       status: 'deactivated',
-      node_id: body.node_id,
+      node_id: nodeId,
+      blackout_id: 1,
+      activated_at: new Date(Date.now() - 3600000).toISOString(),
+      deactivated_at: new Date().toISOString(),
+      duration_seconds: 3600,
+      detections_queued: 0,
       detections_transmitted: 0,
     });
   }),

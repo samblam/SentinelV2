@@ -36,23 +36,27 @@ The Sentinel v2 Backend API is a FastAPI-based service designed to handle detect
 ### Installation
 
 1. **Clone the repository**
+
    ```bash
    cd SentinelV2/backend
    ```
 
 2. **Install dependencies**
+
    ```bash
    pip install -r requirements.txt
    pip install -r requirements-dev.txt  # For development
    ```
 
 3. **Configure environment**
+
    ```bash
    cp .env.example .env
    # Edit .env with your database credentials
    ```
 
 4. **Run database migrations**
+
    ```bash
    alembic upgrade head
    ```
@@ -69,6 +73,7 @@ docker-compose up -d
 ```
 
 This starts:
+
 - FastAPI backend on port 8000
 - PostgreSQL 15 on port 5432
 
@@ -77,6 +82,7 @@ This starts:
 ### Node Management
 
 #### Register Node
+
 ```
 POST /api/nodes/register
 Content-Type: application/json
@@ -87,11 +93,13 @@ Content-Type: application/json
 ```
 
 #### Node Heartbeat
+
 ```
 POST /api/nodes/{node_id}/heartbeat
 ```
 
 #### Get Node Status
+
 ```
 GET /api/nodes/{node_id}/status
 ```
@@ -99,6 +107,7 @@ GET /api/nodes/{node_id}/status
 ### Detection Ingestion
 
 #### Submit Detection
+
 ```
 POST /api/detections
 Content-Type: application/json
@@ -123,6 +132,7 @@ Content-Type: application/json
 ```
 
 #### Get Detections
+
 ```
 GET /api/detections?limit=100&offset=0
 ```
@@ -130,24 +140,23 @@ GET /api/detections?limit=100&offset=0
 ### Blackout Mode
 
 #### Activate Blackout
+
 ```
-POST /api/blackout/activate
+POST /api/nodes/{node_id}/blackout/activate
 Content-Type: application/json
 
 {
-  "node_id": "sentinel-edge-001",
   "reason": "Operational security"
 }
 ```
 
 #### Deactivate Blackout
+
 ```
-POST /api/blackout/deactivate
+POST /api/nodes/{node_id}/blackout/deactivate
 Content-Type: application/json
 
-{
-  "node_id": "sentinel-edge-001"
-}
+{}
 ```
 
 During blackout mode, detections are queued and transmitted when deactivated.
@@ -169,6 +178,7 @@ GET /health
 ## Database Schema
 
 ### Nodes
+
 - `id`: Primary key
 - `node_id`: Unique node identifier
 - `status`: online | offline | covert
@@ -176,6 +186,7 @@ GET /health
 - `created_at`: Node registration time
 
 ### Detections
+
 - `id`: Primary key
 - `node_id`: Foreign key to nodes
 - `timestamp`: Detection timestamp
@@ -188,6 +199,7 @@ GET /health
 - `created_at`: Record creation time
 
 ### Queue Items
+
 - `id`: Primary key
 - `node_id`: Foreign key to nodes
 - `payload`: JSONB message payload
@@ -197,6 +209,7 @@ GET /health
 - `processed_at`: Processing completion time
 
 ### Blackout Events
+
 - `id`: Primary key
 - `node_id`: Foreign key to nodes
 - `activated_at`: Blackout start time
@@ -337,6 +350,7 @@ curl http://localhost:8000/health
 ### Queue Statistics
 
 Available via `QueueManager.get_queue_stats()`:
+
 - Pending items count
 - Completed items count
 - Failed items count
@@ -377,6 +391,7 @@ pytest tests/test_api.py::test_name -v -s
 ## Version
 
 **Module 2**: v2.0.0 - Resilient Backend API
+
 - Completed: January 13, 2025
 - Tests: 54/54 passing
 - Coverage: 67%

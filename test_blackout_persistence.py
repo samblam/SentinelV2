@@ -21,7 +21,9 @@ from datetime import datetime, timezone
 pytestmark = [pytest.mark.integration, pytest.mark.slow]
 
 
-TEST_DB_PATH = Path("/tmp/test_blackout_queue.db")
+import tempfile
+
+TEST_DB_PATH = Path(tempfile.gettempdir()) / "test_blackout_queue.db"
 
 
 async def init_blackout_db(db_path: Path):

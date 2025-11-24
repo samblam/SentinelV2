@@ -41,6 +41,7 @@ Sentinel v2 is a distributed surveillance system that performs **ML inference at
 ### Key Innovation: Blackout Mode
 
 Sentinel's **Blackout Protocol** enables covert operations through apparent system failure:
+
 - Operator activates blackout for specific edge nodes
 - Nodes stop external transmissions (appear offline to adversaries)
 - Continue local ML inference and queue detections in persistent storage
@@ -149,7 +150,7 @@ sequenceDiagram
     Note over O,E: ACTIVATION PHASE
     O->>D: Click "Activate Blackout"
     D->>D: Enter reason
-    D->>B: POST /api/blackout/activate
+    D->>B: POST /api/nodes/{node_id}/blackout/activate
     B->>B: Update node status → "covert"
     B-->>E: WebSocket: Blackout Command
     E->>E: Stop external transmissions
@@ -163,7 +164,7 @@ sequenceDiagram
 
     Note over O,E: DEACTIVATION PHASE
     O->>D: Click "Resume Transmission"
-    D->>B: POST /api/blackout/deactivate
+    D->>B: POST /api/nodes/{node_id}/blackout/deactivate
     B->>B: Update node status → "resuming"
     B-->>E: WebSocket: Resume Command
     E->>Q: Retrieve all queued detections
@@ -265,6 +266,7 @@ erDiagram
 ### Information Flow
 
 **Normal Operations:**
+
 1. Edge node captures image
 2. YOLOv5-nano runs inference locally (~87ms)
 3. Detection result (~1KB JSON) transmitted to backend
@@ -273,6 +275,7 @@ erDiagram
 6. Operator sees detection on tactical map in <1s
 
 **Blackout Mode (Deceptive Operations):**
+
 1. Operator activates "Blackout Mode" for specific nodes
 2. Edge nodes stop external transmissions, appear offline
 3. Continue local inference, queue results in SQLite
@@ -284,6 +287,7 @@ erDiagram
 ## Features
 
 ### Module 1: Edge Inference Engine
+
 - **YOLOv5-nano** object detection (7.5MB model, ~87ms inference on CPU)
 - **FastAPI** async REST endpoints for detection
 - **Blackout mode** with local SQLite queueing
@@ -292,6 +296,7 @@ erDiagram
 - **GPS telemetry** generation and metadata enrichment
 
 ### Module 2: Resilient Backend API
+
 - **PostgreSQL 15** persistence with async SQLAlchemy
 - **WebSocket** real-time push to dashboard
 - **Blackout coordination** across multiple edge nodes
@@ -302,6 +307,7 @@ erDiagram
 - **Alembic migrations** for schema versioning
 
 ### Module 3: ATAK Integration
+
 - **CoT 2.0 XML** generation from detections
 - **Schema validation** for CoT compliance
 - **TAK server client** for ATAK/TAK integration
@@ -309,6 +315,7 @@ erDiagram
 - Compatible with military C2 systems
 
 ### Module 4: Operator Dashboard
+
 - **Tactical map** (Leaflet) with Arctic focus
 - **Real-time WebSocket updates**
 - **Node status panel** (online/offline/covert)
@@ -317,6 +324,7 @@ erDiagram
 - **Dark tactical theme** optimized for field operations
 
 ### Module 5: Blackout Mode (Tactical Deception)
+
 - **Multi-node coordination** via backend
 - **Persistent local queue** (SQLite on edge nodes)
 - **Burst transmission** on deactivation
@@ -405,6 +413,7 @@ npm run dev
 ### Testing the System
 
 1. **Register an edge node:**
+
 ```bash
 curl -X POST http://localhost:8000/api/nodes/register \
   -H "Content-Type: application/json" \
@@ -412,26 +421,29 @@ curl -X POST http://localhost:8000/api/nodes/register \
 ```
 
 2. **Send a detection from edge node:**
+
 ```bash
 curl -X POST http://localhost:8001/detect \
   -F "file=@test_image.jpg"
 ```
 
 3. **View detections in dashboard:**
-Open http://localhost:5173 in browser
+   Open http://localhost:5173 in browser
 
 4. **Activate blackout mode:**
+
 ```bash
-curl -X POST http://localhost:8000/api/blackout/activate \
+curl -X POST http://localhost:8000/api/nodes/sentry-01/blackout/activate \
   -H "Content-Type: application/json" \
-  -d '{"node_id": "sentry-01", "operator_id": "operator-123", "reason": "Testing blackout protocol"}'
+  -d '{"operator_id": "operator-123", "reason": "Testing blackout protocol"}'
 ```
 
 5. **Deactivate and burst transmit:**
+
 ```bash
-curl -X POST http://localhost:8000/api/blackout/deactivate \
+curl -X POST http://localhost:8000/api/nodes/sentry-01/blackout/deactivate \
   -H "Content-Type: application/json" \
-  -d '{"node_id": "sentry-01"}'
+  -d '{}'
 ```
 
 ---
@@ -443,6 +455,7 @@ curl -X POST http://localhost:8000/api/blackout/deactivate \
 **Purpose:** Local object detection optimized for bandwidth-constrained environments
 
 **Key Files:**
+
 - `src/inference.py` - YOLOv5-nano inference engine
 - `src/main.py` - FastAPI application with detection endpoints
 - `src/blackout.py` - Blackout mode controller with SQLite queue
@@ -450,6 +463,7 @@ curl -X POST http://localhost:8000/api/blackout/deactivate \
 - `src/telemetry.py` - GPS mock + metadata generation
 
 **Configuration (`src/config.py`):**
+
 ```python
 NODE_ID: str = "edge-node-01"  # Unique node identifier
 BACKEND_URL: str = "http://localhost:8000"  # Backend API URL
@@ -465,6 +479,7 @@ DEFAULT_LON: float = -100.2  # Default GPS longitude
 **Purpose:** Network-resilient ingestion, storage, and coordination layer
 
 **Key Files:**
+
 - `src/main.py` - FastAPI application with all endpoints
 - `src/models.py` - SQLAlchemy database models (4 tables)
 - `src/blackout.py` - BlackoutCoordinator for multi-node orchestration
@@ -473,6 +488,7 @@ DEFAULT_LON: float = -100.2  # Default GPS longitude
 - `alembic/versions/` - Database migrations
 
 **Database Schema:**
+
 ```sql
 -- Core tables
 nodes            # Edge node registry (id, node_id, status, last_heartbeat)
@@ -486,6 +502,7 @@ blackout_events  # Blackout activation/deactivation log
 **Purpose:** Tactical data link compatibility with military C2 systems
 
 **Key Files:**
+
 - `src/cot_generator.py` - CoT 2.0 XML generation
 - `src/cot_validator.py` - Schema validation
 - `src/cot_schemas.py` - Pydantic schemas for CoT
@@ -497,6 +514,7 @@ blackout_events  # Blackout activation/deactivation log
 **Purpose:** Tactical command & control interface for operators
 
 **Key Files:**
+
 - `src/App.tsx` - Main application
 - `src/components/TacticalMap.tsx` - Leaflet map with detections
 - `src/components/NodeStatusPanel.tsx` - Node health indicators
@@ -515,9 +533,11 @@ blackout_events  # Blackout activation/deactivation log
 **Base URL:** `http://localhost:8001`
 
 #### `POST /detect`
+
 Upload image for object detection
 
 **Request:**
+
 ```bash
 curl -X POST http://localhost:8001/detect \
   -F "file=@image.jpg" \
@@ -525,6 +545,7 @@ curl -X POST http://localhost:8001/detect \
 ```
 
 **Response:**
+
 ```json
 {
   "node_id": "sentry-01",
@@ -547,9 +568,11 @@ curl -X POST http://localhost:8001/detect \
 ```
 
 #### `POST /blackout/activate`
+
 Activate blackout mode (stop transmissions, queue locally)
 
 **Response:**
+
 ```json
 {
   "status": "activated",
@@ -558,9 +581,11 @@ Activate blackout mode (stop transmissions, queue locally)
 ```
 
 #### `POST /blackout/deactivate`
+
 Deactivate blackout mode (return queued detections)
 
 **Response:**
+
 ```json
 {
   "status": "deactivated",
@@ -570,9 +595,11 @@ Deactivate blackout mode (return queued detections)
 ```
 
 #### `GET /blackout/status`
+
 Get blackout mode status
 
 **Response:**
+
 ```json
 {
   "active": true,
@@ -588,9 +615,11 @@ Get blackout mode status
 #### Node Management
 
 ##### `POST /api/nodes/register`
+
 Register a new edge node
 
 **Request:**
+
 ```json
 {
   "node_id": "sentry-01"
@@ -598,6 +627,7 @@ Register a new edge node
 ```
 
 **Response:**
+
 ```json
 {
   "id": 1,
@@ -609,20 +639,25 @@ Register a new edge node
 ```
 
 ##### `POST /api/nodes/{node_id}/heartbeat`
+
 Update node heartbeat timestamp
 
 ##### `GET /api/nodes`
+
 Get all registered nodes
 
 ##### `GET /api/nodes/{node_id}/status`
+
 Get specific node status
 
 #### Detection Ingestion
 
 ##### `POST /api/detections`
+
 Ingest detection from edge node
 
 **Request:**
+
 ```json
 {
   "node_id": "sentry-01",
@@ -635,9 +670,11 @@ Ingest detection from edge node
 ```
 
 ##### `POST /api/detections/batch`
+
 Ingest multiple detections in single transaction (for burst transmission)
 
 **Request:**
+
 ```json
 [
   {...detection1...},
@@ -647,9 +684,11 @@ Ingest multiple detections in single transaction (for burst transmission)
 ```
 
 ##### `GET /api/detections`
+
 Query detection history with filtering
 
 **Query Parameters:**
+
 - `node_id` - Filter by node
 - `start_time` - Filter by start timestamp
 - `end_time` - Filter by end timestamp
@@ -658,46 +697,53 @@ Query detection history with filtering
 
 #### Blackout Mode
 
-##### `POST /api/blackout/activate`
+##### `POST /api/nodes/{node_id}/blackout/activate`
+
 Activate blackout for node
 
 **Request:**
+
 ```json
 {
-  "node_id": "sentry-01",
   "operator_id": "operator-123",
   "reason": "Suspected adversary EW activity"
 }
 ```
 
-##### `POST /api/blackout/deactivate`
+##### `POST /api/nodes/{node_id}/blackout/deactivate`
+
 Deactivate blackout for node
 
 **Request:**
+
 ```json
-{
-  "node_id": "sentry-01"
-}
+{}
 ```
 
 ##### `GET /api/nodes/{node_id}/blackout/status`
+
 Get node blackout status
 
 ##### `POST /api/nodes/{node_id}/blackout/complete`
+
 Complete blackout deactivation workflow
 
 ##### `GET /api/blackout/events`
+
 Get all blackout events
 
 ##### `POST /api/blackout/recover-stuck`
+
 Recover nodes stuck in "resuming" state >5 minutes
 
 #### CoT Generation
 
 ##### `POST /api/cot/generate`
+
 Generate CoT XML from detection
 
 **Request:**
+
 ```json
 {
   "node_id": "sentry-01",
@@ -709,6 +755,7 @@ Generate CoT XML from detection
 ```
 
 **Response:**
+
 ```xml
 <?xml version="1.0"?>
 <event version="2.0" uid="detection-123" type="a-f-G-E-S" time="2045-07-15T14:23:45Z">
@@ -721,14 +768,17 @@ Generate CoT XML from detection
 ```
 
 ##### `POST /api/cot/send`
+
 Generate and send CoT to TAK server
 
 #### WebSocket
 
 ##### `WS /ws`
+
 WebSocket connection for real-time updates
 
 **Message Types:**
+
 - `detection_created` - New detection ingested
 - `node_status_changed` - Node status update
 - `blackout_activated` - Blackout mode activated
@@ -743,6 +793,7 @@ WebSocket connection for real-time updates
 ⚠️ **This is a proof-of-concept. Production requires:**
 
 **Security:**
+
 - [ ] mTLS for node authentication
 - [ ] OAuth2 for operator authentication
 - [ ] AES-256 encryption at rest
@@ -754,6 +805,7 @@ WebSocket connection for real-time updates
 - [ ] Role-based access control (RBAC)
 
 **Infrastructure:**
+
 - [ ] Horizontal scaling (multiple backend instances)
 - [ ] PostgreSQL replication (read replicas)
 - [ ] Redis caching layer
@@ -764,6 +816,7 @@ WebSocket connection for real-time updates
 - [ ] Disaster recovery plan
 
 **Performance:**
+
 - [ ] Database indexing optimization
 - [ ] Connection pooling
 - [ ] Query optimization
@@ -789,6 +842,7 @@ docker-compose down
 ### Environment Variables
 
 **Backend (`backend/.env`):**
+
 ```bash
 DATABASE_URL=postgresql+asyncpg://sentinel:sentinel@postgres:5432/sentinel
 COT_ENABLED=true
@@ -800,6 +854,7 @@ TAK_SERVER_PORT=8087
 ```
 
 **Edge Node (`edge-inference/.env`):**
+
 ```bash
 NODE_ID=sentry-01
 BACKEND_URL=http://backend:8000
@@ -810,6 +865,7 @@ DEFAULT_LON=-100.2
 ```
 
 **Dashboard (`dashboard/.env`):**
+
 ```bash
 VITE_API_URL=http://localhost:8000
 VITE_WS_URL=ws://localhost:8000/ws
@@ -834,12 +890,14 @@ cd atak_integration && pytest tests/ -v
 ### Test Coverage
 
 **Current Coverage:**
+
 - **Backend:** 25 test files covering models, queue, blackout, API endpoints
 - **Edge Inference:** Tests for inference, blackout, burst transmission
 - **ATAK Integration:** Tests for CoT generation, validation
 - **Integration Tests:** Multi-node blackout workflows, persistence, burst transmission
 
 **Key Test Files:**
+
 - `backend/tests/test_blackout.py` - 437 lines, 11 tests for BlackoutCoordinator
 - `backend/tests/test_blackout_workflow.py` - End-to-end blackout workflow
 - `backend/tests/test_blackout_persistence.py` - Queue persistence during blackout
@@ -924,6 +982,7 @@ SentinelV2/
 ### Code Style
 
 **Python:**
+
 - Follow PEP 8
 - Use type hints
 - Use structured logging (`logger.info/warning/error`)
@@ -931,6 +990,7 @@ SentinelV2/
 - Document all public functions with docstrings
 
 **TypeScript:**
+
 - Use TypeScript strict mode
 - Follow React hooks best practices
 - Use functional components
@@ -954,19 +1014,20 @@ alembic downgrade -1
 
 ## Performance Targets
 
-| Metric | Target | Current |
-|--------|--------|---------|
-| **Inference Time** | <100ms | **64.10ms** (measured) ✅ **37% faster** |
-| **Throughput** | >5 fps | **16.93 fps** (measured) ✅ **3.4x faster** |
-| API Latency | <50ms | *Requires backend services* ⏳ |
-| Dashboard Load | <2s | *Requires dev server* ⏳ |
-| WebSocket Latency | <100ms | *Requires backend services* ⏳ |
-| **Model Size** | <10MB | **7.50MB** (measured) ✅ **25% smaller** |
-| Detection Accuracy | >75% mAP | ~75% (YOLOv5-nano standard) ✅ |
-| Bandwidth Reduction | >100x | 500x (500KB image → 1KB detection) ✅ |
-| Data Loss Rate | 0% | 0% (persistent queue, retry logic) ✅ |
+| Metric              | Target   | Current                                     |
+| ------------------- | -------- | ------------------------------------------- |
+| **Inference Time**  | <100ms   | **64.10ms** (measured) ✅ **37% faster**    |
+| **Throughput**      | >5 fps   | **16.93 fps** (measured) ✅ **3.4x faster** |
+| API Latency         | <50ms    | _Requires backend services_ ⏳              |
+| Dashboard Load      | <2s      | _Requires dev server_ ⏳                    |
+| WebSocket Latency   | <100ms   | _Requires backend services_ ⏳              |
+| **Model Size**      | <10MB    | **7.50MB** (measured) ✅ **25% smaller**    |
+| Detection Accuracy  | >75% mAP | ~75% (YOLOv5-nano standard) ✅              |
+| Bandwidth Reduction | >100x    | 500x (500KB image → 1KB detection) ✅       |
+| Data Loss Rate      | 0%       | 0% (persistent queue, retry logic) ✅       |
 
 **Benchmark Status:**
+
 - ✅ **Edge Inference:** Measured November 17, 2025 - All targets exceeded
 - ⏳ **Backend API:** Ready to measure (requires `docker-compose up -d`)
 - ⏳ **Dashboard:** Ready to measure (requires `npm run dev` + Lighthouse)
@@ -998,6 +1059,7 @@ This project is a proof-of-concept demonstration system developed for the DND Po
 ## Roadmap
 
 **Completed:**
+
 - ✅ Edge inference with YOLOv5-nano
 - ✅ Network-resilient backend API
 - ✅ ATAK/CoT integration
@@ -1008,6 +1070,7 @@ This project is a proof-of-concept demonstration system developed for the DND Po
 - ✅ Docker containerization
 
 **Future Enhancements:**
+
 - [ ] End-to-end encryption (mTLS)
 - [ ] Multi-operator support with RBAC
 - [ ] Advanced detection filtering (by object type, confidence)

@@ -195,8 +195,8 @@ async def test_activate_blackout(test_engine, get_session):
     transport = ASGITransport(app=app)
     async with AsyncClient(transport=transport, base_url="http://test") as client:
         response = await client.post(
-            "/api/blackout/activate",
-            json={"node_id": "test-node", "reason": "Operational security"}
+            "/api/nodes/test-node/blackout/activate",
+            json={"reason": "Operational security"}
         )
         assert response.status_code == 200
         data = response.json()
@@ -239,8 +239,8 @@ async def test_deactivate_blackout(test_engine, get_session):
     transport = ASGITransport(app=app)
     async with AsyncClient(transport=transport, base_url="http://test") as client:
         response = await client.post(
-            "/api/blackout/deactivate",
-            json={"node_id": "test-node"}
+            "/api/nodes/test-node/blackout/deactivate",
+            json={}
         )
         assert response.status_code == 200
         data = response.json()

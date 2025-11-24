@@ -5,10 +5,11 @@ from contextlib import asynccontextmanager
 from datetime import datetime, timezone
 from typing import List, Optional
 
-from fastapi import FastAPI, HTTPException, WebSocket, WebSocketDisconnect, Depends, Query, Request
+from fastapi import FastAPI, HTTPException, WebSocket, WebSocketDisconnect, Depends, Query, Request, BackgroundTasks
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from sqlalchemy import select, desc
+from sqlalchemy.orm import joinedload
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.config import settings
@@ -279,6 +280,7 @@ async def get_node_status(
 @app.post("/api/detections", response_model=DetectionResponse)
 async def ingest_detection(
     detection_data: DetectionCreate,
+    background_tasks: BackgroundTasks,
     session: AsyncSession = Depends(get_db),
     queue_mgr: QueueManager = Depends(get_queue_manager)
 ):
@@ -312,6 +314,19 @@ async def ingest_detection(
             }
 
             await queue_mgr.enqueue(node.id, detection_payload)
+
+            # Increment the detections_queued counter on the active blackout event
+            result = await session.execute(
+                select(BlackoutEvent)
+                .where(BlackoutEvent.node_id == node.id)
+                .where(BlackoutEvent.deactivated_at.is_(None))
+                .order_by(desc(BlackoutEvent.activated_at))
+            )
+            active_event = result.scalar_one_or_none()
+            if active_event:
+                active_event.detections_queued += 1
+                await session.commit()
+
 
             # Return a response indicating queued status
             return DetectionResponse(
@@ -382,6 +397,10 @@ async def ingest_detection(
                 }
             })
         )
+
+        # Process CoT update in background
+        if settings.COT_ENABLED and settings.TAK_SERVER_ENABLED:
+            background_tasks.add_task(process_cot_update, detection, node)
 
         return response
 
@@ -635,17 +654,6 @@ async def activate_node_blackout(
                         "detections_queued": 15
                     }
                 }
-            }
-        }
-    }
-)
-async def deactivate_node_blackout(
-    node_id: str,
-    session: AsyncSession = Depends(get_db),
-    queue_mgr: QueueManager = Depends(get_db)
-):
-    """Deactivate blackout mode and trigger burst transmission."""
-    coordinator = BlackoutCoordinator(session)
 
     try:
         summary = await coordinator.deactivate_blackout(node_id)
@@ -769,7 +777,7 @@ async def get_blackout_events(
     session: AsyncSession = Depends(get_db)
 ):
     """Query blackout event history"""
-    query = select(BlackoutEvent).order_by(desc(BlackoutEvent.activated_at)).limit(limit)
+    query = select(BlackoutEvent).options(joinedload(BlackoutEvent.node)).order_by(desc(BlackoutEvent.activated_at)).limit(limit)
 
     if node_id:
         result = await session.execute(
@@ -827,23 +835,7 @@ async def recover_stuck_resuming_nodes(
 
 
 # Legacy endpoints for backward compatibility
-@app.post("/api/blackout/activate")
-async def activate_blackout_legacy(
-    blackout_data: BlackoutActivate,
-    session: AsyncSession = Depends(get_db)
-):
-    """Legacy blackout activation endpoint (redirects to node-specific endpoint)"""
-    return await activate_node_blackout(blackout_data.node_id, blackout_data, session)
 
-
-@app.post("/api/blackout/deactivate")
-async def deactivate_blackout_legacy(
-    blackout_data: BlackoutDeactivate,
-    session: AsyncSession = Depends(get_db),
-    queue_mgr: QueueManager = Depends(get_queue_manager)
-):
-    """Legacy blackout deactivation endpoint (redirects to node-specific endpoint)"""
-    return await deactivate_node_blackout(blackout_data.node_id, session, queue_mgr)
 
 
 # Helper functions for CoT integration
@@ -1176,3 +1168,54 @@ async def websocket_endpoint(websocket: WebSocket, client_id: Optional[str] = Qu
     except Exception as e:
         logger.error(f"WebSocket error for client {client_id}: {e}")
         manager.disconnect(client_id)
+
+
+async def process_cot_update(detection: Detection, node: Node):
+    """
+    Process detection for CoT generation and transmission.
+    Filters based on COT_TARGET_CLASSES.
+    """
+    try:
+        # Check if detection contains any target classes
+        has_target_class = False
+        
+        # Handle empty target classes (send everything)
+        if not settings.COT_TARGET_CLASSES:
+            has_target_class = True
+        else:
+            # Check each detected object
+            for det in detection.detections_json:
+                if det.get("class") in settings.COT_TARGET_CLASSES:
+                    has_target_class = True
+                    break
+        
+        if not has_target_class:
+            return
+
+        # Initialize dependencies manually since we're in a background task
+        cot_gen = CoTGenerator(
+            stale_minutes=settings.COT_STALE_MINUTES,
+            cot_type=settings.COT_TYPE
+        )
+        
+        tak_client = TAKClient(
+            host=settings.TAK_SERVER_HOST,
+            port=settings.TAK_SERVER_PORT
+        )
+
+        # Convert to CoT format
+        cot_data = detection_to_cot_format(detection, node)
+        cot_detection = CoTSentinelDetection(**cot_data)
+
+        # Generate CoT XML
+        cot_xml = cot_gen.generate(cot_detection)
+
+        # Send to TAK server
+        async with tak_client:
+            await tak_client.connect()
+            await tak_client.send_cot(cot_xml)
+            
+        logger.info(f"Auto-sent CoT for detection {detection.id} (matched target classes)")
+
+    except Exception as e:
+        logger.error(f"Error in background CoT processing: {e}")

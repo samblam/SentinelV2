@@ -33,8 +33,8 @@ async def test_activate_blackout_nonexistent_node(test_engine, get_session):
     transport = ASGITransport(app=app)
     async with AsyncClient(transport=transport, base_url="http://test") as client:
         response = await client.post(
-            "/api/blackout/activate",
-            json={"node_id": "nonexistent"}
+            "/api/nodes/nonexistent/blackout/activate",
+            json={}
         )
         assert response.status_code == 400  # ValueError raises 400
 
@@ -50,8 +50,8 @@ async def test_activate_blackout_already_active(test_engine, get_session):
     transport = ASGITransport(app=app)
     async with AsyncClient(transport=transport, base_url="http://test") as client:
         response = await client.post(
-            "/api/blackout/activate",
-            json={"node_id": "test-node"}
+            "/api/nodes/test-node/blackout/activate",
+            json={}
         )
         assert response.status_code == 400  # ValueError raises 400
         data = response.json()
@@ -64,8 +64,8 @@ async def test_deactivate_blackout_nonexistent_node(test_engine, get_session):
     transport = ASGITransport(app=app)
     async with AsyncClient(transport=transport, base_url="http://test") as client:
         response = await client.post(
-            "/api/blackout/deactivate",
-            json={"node_id": "nonexistent"}
+            "/api/nodes/nonexistent/blackout/deactivate",
+            json={}
         )
         assert response.status_code == 400  # ValueError raises 400
 
@@ -81,8 +81,8 @@ async def test_deactivate_blackout_not_active(test_engine, get_session):
     transport = ASGITransport(app=app)
     async with AsyncClient(transport=transport, base_url="http://test") as client:
         response = await client.post(
-            "/api/blackout/deactivate",
-            json={"node_id": "test-node"}
+            "/api/nodes/test-node/blackout/deactivate",
+            json={}
         )
         assert response.status_code == 400  # ValueError raises 400
         data = response.json()

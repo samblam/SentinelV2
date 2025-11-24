@@ -17,8 +17,11 @@ from datetime import datetime, timezone
 pytestmark = [pytest.mark.integration, pytest.mark.slow]
 
 
+import uuid
+
 BACKEND_URL = "http://localhost:8001"
-NODE_IDS = ["sentry-01", "sentry-02", "aerostat-01"]
+# Use unique node IDs to avoid state collisions
+NODE_IDS = [f"sentry-{uuid.uuid4().hex[:8]}", f"sentry-{uuid.uuid4().hex[:8]}", f"aerostat-{uuid.uuid4().hex[:8]}"]
 
 
 async def wait_for_backend(timeout: int = 30):
@@ -41,9 +44,9 @@ async def wait_for_backend(timeout: int = 30):
 
 async def ensure_node_exists(session: aiohttp.ClientSession, node_id: str):
     """Ensure node exists in backend."""
-    # Create node via heartbeat
+    # Create node via register
     async with session.post(
-        f"{BACKEND_URL}/api/heartbeat",
+        f"{BACKEND_URL}/api/nodes/register",
         json={"node_id": node_id}
     ) as response:
         if response.status in [200, 201]:
@@ -91,7 +94,7 @@ async def test_multi_node_blackout():
                 })
                 print(f"  ✓ {node_id}: blackout_id={data['blackout_id']}")
 
-        await asyncio.sleep(0.5)
+        await asyncio.sleep(1.5)
 
         # Step 2: Verify all nodes in covert mode
         print(f"\n[STEP 2] Verifying all nodes are in covert mode...")
